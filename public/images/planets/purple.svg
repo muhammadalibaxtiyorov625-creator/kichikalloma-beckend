@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <radialGradient id="purpleGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#d8b4fe" />
+      <stop offset="35%" stop-color="#9333ea" />
+      <stop offset="70%" stop-color="#6b21a8" />
+      <stop offset="100%" stop-color="#2e1065" />
+    </radialGradient>
+  </defs>
+  <!-- Orbiting satellites / energy -->
+  <circle cx="35" cy="80" r="5" fill="#f3e8ff" />
+  <circle cx="165" cy="70" r="6" fill="#c084fc" />
+  <circle cx="155" cy="140" r="4.5" fill="#e9d5ff" />
+  
+  <!-- Planet Body -->
+  <circle cx="100" cy="100" r="68" fill="url(#purpleGrad)" />
+  
+  <!-- Volcanoes / Surface Details -->
+  <circle cx="75" cy="70" r="16" fill="#581c87" opacity="0.7" />
+  <circle cx="120" cy="90" r="22" fill="#3b0764" opacity="0.6" />
+  <circle cx="85" cy="125" r="14" fill="#3b0764" opacity="0.8" />
+  <ellipse cx="65" cy="50" rx="20" ry="8" fill="#f3e8ff" opacity="0.3" transform="rotate(-15 65 50)" />
+</svg>

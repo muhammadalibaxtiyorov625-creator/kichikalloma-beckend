@@ -1,0 +1,16 @@
+[Unit]
+Description=Kichik Alloma Educational Platform Backend & Frontend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/kichik-alloma
+ExecStart=/var/www/kichik-alloma/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 3000
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/var/www/kichik-alloma/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://kichikalloma.uz/</loc>
+    <lastmod>2026-08-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/hero.jpg</image:loc>
+      <image:title>Kichik Alloma — Kosmik ta'lim ekotizimi</image:title>
+      <image:caption>Farzandingizning ekran vaqtini uning kelajagi uchun sarmoyaga aylantiring</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/logo.png</image:loc>
+      <image:title>Kichik Alloma Logotipi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/merkuriy.png</image:loc>
+      <image:title>Merkuriy — Kasblar sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/venera.png</image:loc>
+      <image:title>Venera — Virtual do'kon sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/earth.png</image:loc>
+      <image:title>Yer — Kognitiv ta'lim va AI-ustoz sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/mars.png</image:loc>
+      <image:title>Mars — Jismoniy faollik sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/jupiter.png</image:loc>
+      <image:title>Yupiter — O'z-o'zini boshqarish va intizom sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/saturn.png</image:loc>
+      <image:title>Saturn — Matematika va mantiq sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/uran.png</image:loc>
+      <image:title>Uran — Ingliz tili va nutq sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/neptun.png</image:loc>
+      <image:title>Neptun — Emotsional savodxonlik sayyorasi</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/parents_panel.png</image:loc>
+      <image:title>Ota-onalar tahliliy paneli</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://kichikalloma.uz/img/certificate.jpg</image:loc>
+      <image:title>Kosmik Sertifikat</image:title>
+    </image:image>
+  </url>
+</urlset>

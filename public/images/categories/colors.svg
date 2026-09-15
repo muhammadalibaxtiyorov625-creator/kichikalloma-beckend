@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="46" fill="#F3F0FF"/>
+  <!-- Color Palette -->
+  <path d="M50 20 C32 20 18 34 18 52 C18 68 30 80 46 80 C50 80 54 76 54 72 C54 70 53 68 53 66 C53 62 56 59 60 59 L68 59 C76 59 82 53 82 45 C82 31 68 20 50 20 Z" fill="#E5DBFF" stroke="#7950F2" stroke-width="3"/>
+  <circle cx="34" cy="36" r="6" fill="#FF6B6B"/>
+  <circle cx="52" cy="30" r="6" fill="#FCC419"/>
+  <circle cx="68" cy="38" r="6" fill="#51CF66"/>
+  <circle cx="32" cy="54" r="6" fill="#339AF0"/>
+  <circle cx="70" cy="70" r="7" fill="#CC5DE8"/>
+</svg>

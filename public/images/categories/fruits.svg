@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="46" fill="#FFE8EC"/>
+  <!-- Apple -->
+  <path d="M50 35 C42 22, 26 28, 26 48 C26 70, 44 80, 50 82 C56 80, 74 70, 74 48 C74 28, 58 22, 50 35 Z" fill="#FF4D6D"/>
+  <ellipse cx="40" cy="46" rx="4" ry="7" fill="#FF758F" transform="rotate(-15 40 46)"/>
+  <!-- Leaf and stem -->
+  <path d="M50 35 C50 25, 53 18, 56 16" stroke="#6C3E18" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M53 22 C62 18, 66 24, 64 29 C58 30, 54 26, 53 22 Z" fill="#48BB78"/>
+</svg>

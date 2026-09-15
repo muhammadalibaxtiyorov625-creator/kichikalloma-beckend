@@ -1,0 +1,367 @@
+/* ==========================================================================
+   KICHIK ALLOMA — 3D COSMIC PARTICLE EXPERIENCE (Dynamic Multi-Shape Engine)
+   ========================================================================== */
+
+#cosmic-3d-modal {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #020307;
+  z-index: 999999;
+  display: none;
+  overflow: hidden;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#cosmic-3d-modal.active {
+  display: block;
+  opacity: 1;
+}
+
+#cosmic-3d-canvas-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: grab;
+}
+
+#cosmic-3d-canvas-container:active {
+  cursor: grabbing;
+}
+
+/* Ambient Planet Glow in Background */
+.cosmic-ambient-glow {
+  position: absolute;
+  top: 50%;
+  right: 25%;
+  transform: translate(50%, -50%);
+  width: 70vw;
+  height: 70vw;
+  max-width: 900px;
+  max-height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--planet-glow, rgba(56, 189, 248, 0.15)) 0%, rgba(2, 3, 7, 0) 70%);
+  opacity: 0.5;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 2;
+  transition: background 0.8s ease;
+}
+
+/* ONLY CLOSE BUTTON (TOP RIGHT) */
+.cosmic-close-btn {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  pointer-events: auto;
+}
+
+.cosmic-close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* ============================================================
+   CINEMATIC EDITORIAL TEXT HUD
+   ============================================================ */
+.cosmic-editorial-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  padding: 0 7vw;
+}
+
+.cosmic-text-block {
+  max-width: 580px;
+  pointer-events: auto;
+}
+
+/* Slide Transition Animations */
+.cosmic-text-block.slide-enter-up {
+  animation: slideEnterUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cosmic-text-block.slide-exit-up {
+  animation: slideExitUp 0.22s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+.cosmic-text-block.slide-enter-down {
+  animation: slideEnterDown 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cosmic-text-block.slide-exit-down {
+  animation: slideExitDown 0.22s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+@keyframes slideEnterUp {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideExitUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+@keyframes slideEnterDown {
+  from {
+    opacity: 0;
+    transform: translateY(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideExitDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+/* Kicker Badge */
+.cosmic-slide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--planet-color, #facc15);
+  margin-bottom: 14px;
+  text-shadow: 0 0 16px var(--planet-glow, rgba(250, 204, 21, 0.6));
+}
+
+.cosmic-slide-badge::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--planet-color, #facc15);
+  box-shadow: 0 0 12px var(--planet-color, #facc15);
+}
+
+/* Massive Bold Typography */
+.cosmic-slide-title {
+  font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.9), 0 0 24px var(--planet-glow, rgba(255, 255, 255, 0.2));
+}
+
+.cosmic-slide-subtitle {
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  color: var(--planet-color, #38bdf8);
+  line-height: 1.4;
+  margin-bottom: 16px;
+  text-shadow: 0 0 12px var(--planet-glow, rgba(56, 189, 248, 0.4));
+}
+
+.cosmic-slide-desc {
+  font-size: 14.5px;
+  color: #cbd5e1;
+  line-height: 1.7;
+  font-weight: 500;
+  margin-bottom: 24px;
+  max-width: 520px;
+}
+
+/* Staggered Word Pills & Interactive Cards */
+.cosmic-items-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cosmic-pill-tag {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--planet-border, rgba(255, 255, 255, 0.12));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: pillPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cosmic-pill-tag:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--planet-color, #facc15);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 25px var(--planet-glow, rgba(250, 204, 21, 0.35));
+}
+
+@keyframes pillPop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Vertical Slide Step Counter / Progress Dots (Left side) */
+.cosmic-steps-indicator {
+  position: absolute;
+  left: 3vw;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.cosmic-step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cosmic-step-dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.3);
+}
+
+.cosmic-step-dot.active {
+  background: var(--planet-color, #facc15);
+  height: 26px;
+  border-radius: 6px;
+  box-shadow: 0 0 16px var(--planet-color, #facc15);
+}
+
+/* Bottom Navigation */
+.cosmic-bottom-nav {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cosmic-nav-arrow {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.cosmic-nav-arrow:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--planet-color, #facc15);
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.cosmic-scroll-status {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .cosmic-editorial-hud {
+    align-items: flex-end;
+    padding: 0 24px 80px;
+  }
+  .cosmic-text-block {
+    max-width: 100%;
+  }
+  .cosmic-slide-title {
+    font-size: 1.8rem;
+  }
+  .cosmic-slide-desc {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .cosmic-steps-indicator {
+    left: 12px;
+  }
+  .cosmic-bottom-nav {
+    bottom: 16px;
+  }
+}

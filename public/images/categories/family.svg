@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="46" fill="#EBFBEE"/>
+  <!-- Parents & Child -->
+  <!-- Father -->
+  <circle cx="35" cy="36" r="11" fill="#4DABF7"/>
+  <path d="M22 68 C22 52 48 52 48 68 Z" fill="#339AF0"/>
+  <!-- Mother -->
+  <circle cx="65" cy="38" r="10" fill="#FF8787"/>
+  <path d="M52 68 C52 54 78 54 78 68 Z" fill="#FA5252"/>
+  <!-- Child -->
+  <circle cx="50" cy="54" r="8" fill="#FFD43B"/>
+  <path d="M40 76 C40 66 60 66 60 76 Z" fill="#FCC419"/>
+  <!-- Heart above -->
+  <path d="M50 22 C48 18 44 18 42 20 C40 23 44 26 50 30 C56 26 60 23 58 20 C56 18 52 18 50 22 Z" fill="#FF6B6B"/>
+</svg>

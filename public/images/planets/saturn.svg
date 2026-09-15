@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <radialGradient id="saturnGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="35%" stop-color="#ca8a04" />
+      <stop offset="70%" stop-color="#854d0e" />
+      <stop offset="100%" stop-color="#451a03" />
+    </radialGradient>
+  </defs>
+  <!-- Back Rings -->
+  <ellipse cx="100" cy="100" rx="95" ry="26" fill="none" stroke="#fde047" stroke-width="9" opacity="0.6" transform="rotate(-30 100 100)" />
+  <ellipse cx="100" cy="100" rx="86" ry="20" fill="none" stroke="#eab308" stroke-width="4" opacity="0.8" transform="rotate(-30 100 100)" />
+
+  <!-- Planet -->
+  <circle cx="100" cy="100" r="56" fill="url(#saturnGrad)" />
+  <path d="M 52 90 Q 100 115 148 90" stroke="#fef08a" stroke-width="5" fill="none" opacity="0.4" />
+  <path d="M 55 110 Q 100 135 145 110" stroke="#713f12" stroke-width="6" fill="none" opacity="0.6" />
+
+  <!-- Front Rings -->
+  <path d="M 20 142 A 95 26 0 0 0 180 58" fill="none" stroke="#fde047" stroke-width="9" opacity="0.95" />
+  <path d="M 28 138 A 86 20 0 0 0 172 62" fill="none" stroke="#fef08a" stroke-width="4" opacity="0.95" />
+</svg>

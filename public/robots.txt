@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /docs
+Disallow: /redoc
+Disallow: /api/
+
+# AI Crawlers (ChatGPT, Gemini, Perplexity)
+User-agent: GPTBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://kichikalloma.uz/sitemap.xml
+

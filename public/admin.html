@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Admin Panel | Sayyoralar, Qulayliklar, Jamoa & Galereya</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- Custom Style -->
+  <link rel="stylesheet" href="/css/style.css?v=20260828_v23_modal_active_fix">
+  <!-- 3D Cosmic Particle Styles -->
+  <link rel="stylesheet" href="/css/cosmic-3d.css?v=20260828_v1">
+</head>
+<body>
+
+  <!-- ================= ADMIN LOGIN OVERLAY ================= -->
+  <div id="admin-login-overlay">
+    <div class="login-card">
+      <div class="login-glow"></div>
+
+      <div class="login-logo">
+        <div class="login-logo-icon">🛡️</div>
+        <div class="login-logo-text">
+          <h2>ADMIN<span>PRO</span></h2>
+          <p>Kichik Alloma Boshqaruv Tizimi</p>
+        </div>
+      </div>
+
+      <div class="login-title">
+        <h3>Xush kelibsiz</h3>
+        <p>Davom etish uchun tizimga kiring</p>
+      </div>
+
+      <div class="login-error" id="login-error">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span id="login-error-msg">Email yoki parol noto'g'ri</span>
+      </div>
+
+      <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+        <div class="login-field">
+          <label>Email</label>
+          <div class="login-input-wrap">
+            <i class="bi bi-envelope-fill"></i>
+            <input type="email" id="login-email" placeholder="kichikalloma@gmail.com" autocomplete="email" required>
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label>Parol</label>
+          <div class="login-input-wrap">
+            <i class="bi bi-lock-fill"></i>
+            <input type="password" id="login-password" placeholder="••••••••••" autocomplete="current-password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn" id="login-submit-btn">
+          Kirish
+        </button>
+      </form>
+
+      <div class="login-footer">
+        🔒 Barcha ma'lumotlar xavfsiz saqlanadi
+      </div>
+    </div>
+  </div>
+  <!-- ================= END LOGIN OVERLAY ================= -->
+
+  <div class="app-layout">
+    <!-- Sidebar Overlay for mobile / tablet -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div class="brand-text">
+          <h2>ADMIN<span>PRO</span></h2>
+          <p>Boshqaruv Paneli</p>
+        </div>
+        <button class="sidebar-close-btn" onclick="closeSidebar()" title="Menyuni yopish">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Asosiy Menyu</div>
+        <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">
+          <i class="bi bi-grid-1x2-fill"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-btn" data-tab="planets" onclick="switchTab('planets')">
+          <i class="bi bi-globe-americas"></i>
+          <span>Sayyoralar</span>
+          <span class="nav-badge" id="planets-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="amenities" onclick="switchTab('amenities')">
+          <i class="bi bi-stars"></i>
+          <span>Qulayliklar</span>
+          <span class="nav-badge" id="amenities-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="teams" onclick="switchTab('teams')">
+          <i class="bi bi-people-fill"></i>
+          <span>Bizning Jamoa</span>
+          <span class="nav-badge" id="teams-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="gallery" onclick="switchTab('gallery')">
+          <i class="bi bi-images"></i>
+          <span>Galereya</span>
+          <span class="nav-badge" id="gallery-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="messages" onclick="switchTab('messages')">
+          <i class="bi bi-chat-left-text-fill"></i>
+          <span>Xabarlar</span>
+          <span class="nav-badge alert-badge" id="unread-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="uran" onclick="switchTab('uran')">
+          <i class="bi bi-translate"></i>
+          <span>Uran (So'zlar & Test)</span>
+          <span class="nav-badge" id="uran-count-badge">10</span>
+        </button>
+        <button class="nav-btn" data-tab="faqs" onclick="switchTab('faqs')">
+          <i class="bi bi-question-circle-fill"></i>
+          <span>FAQ Savollar</span>
+          <span class="nav-badge" id="faqs-count-badge">0</span>
+        </button>
+        <button class="nav-btn" data-tab="ai" onclick="switchTab('ai')">
+          <i class="bi bi-robot"></i>
+          <span>Alloma AI Yordamchi</span>
+          <span class="nav-badge" style="background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px;">Gemini</span>
+        </button>
+
+        <div class="nav-section-title">API Dokumentatsiya</div>
+        <a href="/docs" target="_blank" class="nav-btn external-link">
+          <i class="bi bi-file-earmark-code-fill"></i>
+          <span>Swagger Docs</span>
+          <i class="bi bi-box-arrow-up-right small-icon"></i>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="btn-sidebar-logout" onclick="handleAdminLogout()" title="Tizimdan chiqish">
+          <i class="bi bi-box-arrow-right"></i>
+          <span>Tizimdan chiqish</span>
+        </button>
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span>Tizim: <strong>FastAPI Active</strong></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <header class="top-header">
+        <div class="header-left">
+          <button id="mobile-toggle-btn" class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menyuni ochish">
+            <i class="bi bi-list"></i>
+          </button>
+          <div>
+            <h1 id="page-title">Dashboard</h1>
+            <p class="subtitle" id="page-subtitle">Umumiy tizim holati va so'nggi ma'lumotlar</p>
+          </div>
+        </div>
+        <div class="header-right">
+          <a href="/docs" target="_blank" class="btn-swagger-link" title="Swagger API Dokumentatsiyasi">
+            <i class="bi bi-code-slash"></i>
+            <span class="swagger-text">Swagger API</span>
+          </a>
+          <button type="button" class="btn-header-logout" onclick="handleAdminLogout()" title="Tizimdan chiqish">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Chiqish</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <!-- 1. DASHBOARD TAB -->
+        <section id="tab-dashboard" class="tab-content active">
+          <!-- Stats Row -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon yellow">
+                <i class="bi bi-eye-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Umumiy Tashriflar</span>
+                <h3 class="stat-value text-yellow" id="stat-total-visitors">0</h3>
+                <span class="stat-sub">Saytga kirganlar soni</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon yellow-glow">
+                <i class="bi bi-globe-americas"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Rivojlanish Sayyoralari</span>
+                <h3 class="stat-value text-yellow" id="stat-total-planets">0</h3>
+                <span class="stat-sub">Rasmli ta'lim sayyoralari</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon yellow-glow">
+                <i class="bi bi-stars"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Jami Qulayliklar</span>
+                <h3 class="stat-value" id="stat-total-amenities">0</h3>
+                <span class="stat-sub">Ta'limiy qulayliklar</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon purple-glow">
+                <i class="bi bi-people-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Jamoa A'zolari</span>
+                <h3 class="stat-value text-yellow" id="stat-total-teams">0</h3>
+                <span class="stat-sub">Malakali mutaxassislar</span>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon green-glow">
+                <i class="bi bi-images"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Galereya Rasmlari</span>
+                <h3 class="stat-value" id="stat-total-gallery">0</h3>
+                <span class="stat-sub">Platforma fotosuratlari</span>
+              </div>
+            </div>
+
+            <div class="stat-card" onclick="switchTab('faqs')" style="cursor: pointer;">
+              <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">
+                <i class="bi bi-question-circle-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">FAQ Savollar</span>
+                <h3 class="stat-value text-yellow" id="stat-total-faqs">0</h3>
+                <span class="stat-sub">Ko'p beriladigan savollar</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Banner -->
+          <div class="action-banner">
+            <div class="banner-text">
+              <h3><i class="bi bi-shield-check text-yellow"></i> Sayyoralar, Qulayliklar, Jamoa & Galereya Tizimi</h3>
+              <p>Platformaning barcha ma'lumotlari, fotosuratlari va jamoasini to'liq boshqaring.</p>
+            </div>
+            <div class="banner-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-yellow" onclick="switchTab('gallery'); openGalleryModal();">
+                <i class="bi bi-plus-circle-fill"></i> Rasm Yuklash
+              </button>
+              <button class="btn btn-secondary" onclick="switchTab('teams'); openTeamModal();">
+                <i class="bi bi-person-plus-fill"></i> Jamoa A'zosi
+              </button>
+            </div>
+          </div>
+
+          <!-- Single Full-Width Recent Messages Panel on Dashboard -->
+          <div class="dashboard-columns">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div>
+                  <h3 class="panel-title"><i class="bi bi-chat-dots-fill text-yellow"></i> Kelgan So'nggi Xabarlar</h3>
+                  <p class="panel-subtitle">Ismi, telefon raqami va xabar matni</p>
+                </div>
+                <button class="btn-link" onclick="switchTab('messages')">Barcha xabarlarni ko'rish &rarr;</button>
+              </div>
+              <div class="panel-body">
+                <div id="dashboard-messages-list" class="mini-list">
+                  <div class="loading-state">Yuklanmoqda...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. PLANETS (SAYYORALAR) TAB -->
+        <section id="tab-planets" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="planet-search" placeholder="Sayyora nomi yoki tavsifi bo'yicha qidirish..." oninput="renderPlanets()">
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-yellow" onclick="openPlanetModal()">
+                <i class="bi bi-plus-circle-fill"></i> Yangi Sayyora Qo'shish
+              </button>
+            </div>
+          </div>
+
+          <div id="planets-grid" class="cards-grid">
+            <div class="loading-state">Sayyoralar yuklanmoqda...</div>
+          </div>
+        </section>
+
+        <!-- 3. AMENITIES TAB -->
+        <section id="tab-amenities" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="amenity-search" placeholder="Qulayliklar bo'yicha qidirish..." oninput="renderAmenities()">
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-yellow" onclick="openAmenityModal()">
+                <i class="bi bi-plus-circle-fill"></i> Yangi Qulaylik Qo'shish
+              </button>
+            </div>
+          </div>
+
+          <div id="amenities-grid" class="cards-grid">
+            <div class="loading-state">Qulayliklar yuklanmoqda...</div>
+          </div>
+        </section>
+
+        <!-- 4. TEAMS (JAMOA) TAB -->
+        <section id="tab-teams" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="team-search" placeholder="Ism, familiya yoki yo'nalishi bo'yicha qidirish..." oninput="renderTeams()">
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-yellow" onclick="openTeamModal()">
+                <i class="bi bi-person-plus-fill"></i> Yangi A'zo Qo'shish
+              </button>
+            </div>
+          </div>
+
+          <div id="teams-grid" class="cards-grid team-cards-grid">
+            <div class="loading-state">Jamoa a'zolari yuklanmoqda...</div>
+          </div>
+        </section>
+
+        <!-- 5. GALLERY (GALEREYA) TAB -->
+        <section id="tab-gallery" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="gallery-search" placeholder="Rasm sarlavhasi bo'yicha qidirish..." oninput="renderGallery()">
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-yellow" onclick="openGalleryModal()">
+                <i class="bi bi-cloud-arrow-up-fill"></i> Yangi Rasm Yuklash
+              </button>
+            </div>
+          </div>
+
+          <div id="gallery-grid" class="cards-grid gallery-cards-grid">
+            <div class="loading-state">Galereya yuklanmoqda...</div>
+          </div>
+        </section>
+
+        <!-- 6. MESSAGES TAB -->
+        <section id="tab-messages" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="message-search" placeholder="Ism, telefon raqam yoki xabar matni bo'yicha qidiruv..." oninput="filterMessages()">
+            </div>
+            <div class="filter-group">
+              <button class="filter-btn active" data-filter="all" onclick="setMessageFilter('all', this)">Barchasi</button>
+              <button class="filter-btn" data-filter="unread" onclick="setMessageFilter('unread', this)">Faqat O'qilmaganlar</button>
+            </div>
+          </div>
+
+          <div class="messages-container">
+            <div id="messages-list" class="messages-table-card">
+              <div class="loading-state">Xabarlar yuklanmoqda...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6.4 INGLIZ TILI (URAN SAYYORASI — MAVZULAR, SO'ZLAR & TESTLAR) TAB -->
+        <section id="tab-uran" class="tab-content">
+          
+          <!-- ASOSIY KO'RINISH: KATEGORIYALAR GRIDI -->
+          <div id="uran-main-view">
+            <!-- Statistics Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+              <div class="card" style="padding: 16px 20px; border-left: 4px solid #6366f1; display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.7);">
+                <div>
+                  <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 4px 0; font-weight: 700; text-transform: uppercase;">Jami Inglizcha So'zlar</p>
+                  <h3 id="stat-uran-words-total" style="font-size: 24px; font-weight: 800; color: #fff; margin: 0;">106 ta</h3>
+                </div>
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(99, 102, 241, 0.2); color: #818cf8; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                  <i class="bi bi-translate"></i>
+                </div>
+              </div>
+
+              <div class="card" style="padding: 16px 20px; border-left: 4px solid #3b82f6; display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.7);">
+                <div>
+                  <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 4px 0; font-weight: 700; text-transform: uppercase;">Lug'at Mavzulari</p>
+                  <h3 id="stat-uran-cats-total" style="font-size: 24px; font-weight: 800; color: #fff; margin: 0;">10 ta</h3>
+                </div>
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                  <i class="bi bi-folder-fill"></i>
+                </div>
+              </div>
+
+              <div class="card" style="padding: 16px 20px; border-left: 4px solid #10b981; display: flex; align-items: center; justify-content: space-between; background: rgba(30, 41, 59, 0.7);">
+                <div>
+                  <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 4px 0; font-weight: 700; text-transform: uppercase;">4-Variantli Test Savollari</p>
+                  <h3 id="stat-uran-tests-total" style="font-size: 24px; font-weight: 800; color: #fff; margin: 0;">106 ta</h3>
+                </div>
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(16, 185, 129, 0.2); color: #34d399; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                  <i class="bi bi-patch-question-fill"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section Toolbar -->
+            <div class="section-toolbar" style="flex-wrap: wrap; gap: 12px; align-items: center;">
+              <div class="search-box" style="flex: 1; min-width: 240px;">
+                <i class="bi bi-search"></i>
+                <input type="text" id="uran-cat-search" placeholder="Mavzu yoki so'z bo'yicha qidiruv..." oninput="renderUranCategories()">
+              </div>
+
+              <div class="toolbar-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-yellow" onclick="openUranCategoryModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                  <i class="bi bi-folder-plus"></i> <span>Yangi Kategoriya Qo'shish</span>
+                </button>
+                <button class="btn btn-secondary" onclick="openUranWordModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                  <i class="bi bi-plus-circle"></i> <span>Yangi So'z Qo'shish</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Mavzular / Kategoriyalar Ko'rinishi (Categories Grid) -->
+            <div id="uran-categories-grid" class="cards-grid">
+            </div>
+          </div>
+
+          <!-- ICHKI KO'RINISH: TANLANGAN KATEGORIYA SO'ZLARI (DRILL-DOWN DETAIL VIEW) -->
+          <div id="uran-detail-view" style="display: none;">
+            <!-- Back Navigation Bar -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+              <button class="btn btn-secondary" onclick="closeUranCategoryDetail()" style="display: flex; align-items: center; gap: 8px; font-weight: 700; padding: 10px 18px; border-radius: 10px; font-size: 14px;">
+                <i class="bi bi-arrow-left"></i> <span>Barcha Mavzularga Qaytish</span>
+              </button>
+              
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-secondary" onclick="openUranCategoryModal(currentOpenCatId)" style="padding: 10px 16px; font-weight: 700; border-radius: 10px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.2);">
+                  <i class="bi bi-pencil-square text-yellow"></i> <span>Mavzuni Tahrirlash</span>
+                </button>
+                <button class="btn btn-secondary" onclick="handleDeleteUranCategory(currentOpenCatId, currentOpenCatName)" style="padding: 10px 16px; font-weight: 700; border-radius: 10px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(239,68,68,0.3); color: #f87171;">
+                  <i class="bi bi-trash"></i> <span>Mavzuni O'chirish</span>
+                </button>
+                <button id="uran-detail-add-btn" class="btn btn-yellow" onclick="openUranWordModal(currentOpenCatId, currentOpenCatName)" style="padding: 10px 18px; font-weight: 700; border-radius: 10px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">
+                  <i class="bi bi-plus-circle-fill"></i> <span>Yangi So'z Qo'shish</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Selected Category Hero Header -->
+            <div class="card" style="padding: 20px; margin-bottom: 20px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border-left: 4px solid #eab308; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+              <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                <div style="width: 70px; height: 70px; border-radius: 16px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; padding: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                  <img id="uran-detail-img" src="/images/categories/fruits.png" alt="" style="max-height: 54px; max-width: 54px; object-fit: contain;">
+                </div>
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px;">
+                    <h2 id="uran-detail-title" style="font-size: 1.45rem; font-weight: 800; color: #fff; margin: 0;">Meva va Sabzavotlar</h2>
+                    <span id="uran-detail-badge" class="badge" style="background: rgba(234,179,8,0.2); color: #eab308; font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">14 ta so'z</span>
+                  </div>
+                  <p id="uran-detail-subtitle" style="font-size: 14px; color: #38bdf8; font-weight: 700; margin: 0 0 4px 0;">Fruits & Vegetables</p>
+                  <p id="uran-detail-desc" style="font-size: 13px; color: var(--text-secondary); margin: 0;">Meva va sabzavotlarning inglizcha va o'zbekcha nomlarini o'rganamiz</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Detail Search Toolbar -->
+            <div class="section-toolbar" style="margin-bottom: 18px; align-items: center;">
+              <div class="search-box" style="flex: 1;">
+                <i class="bi bi-search"></i>
+                <input type="text" id="uran-detail-search" placeholder="Shu mavzu ichidan so'z qidirish (inglizcha, o'zbekcha, misol)..." oninput="filterUranDetailWords()">
+              </div>
+            </div>
+
+            <!-- Words Grid inside Category -->
+            <div id="uran-detail-words-grid" class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;">
+            </div>
+          </div>
+
+        </section>
+
+        <!-- 6.5 FAQ (KO'P SO'RALADIGAN SAVOLLAR) TAB -->
+        <section id="tab-faqs" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="faq-search" placeholder="Savol yoki javob bo'yicha qidirish..." oninput="renderFaqs()">
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn btn-yellow" onclick="openFaqModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                <i class="bi bi-plus-circle-fill"></i> <span>Yangi FAQ Qo'shish</span>
+              </button>
+            </div>
+          </div>
+
+                    <div id="faqs-grid" class="cards-grid faq-cards-grid">
+            <div class="card item-card faq-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #eab308; padding: 18px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px;">#1</span>
+                    <span class="status-badge status-active">Faol</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">ID: 1</div>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.4;">
+                  <i class="bi bi-patch-question text-yellow" style="margin-right: 4px;"></i> Kichik Alloma platformasi nima va u kimlar uchun mo'ljallangan?
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; margin-bottom: 16px;">Kichik Alloma — 3 yoshdan 11 yoshgacha bo'lgan bolalarning aqliy, mantiqiy, nutqiy va ijodiy salohiyatini rivojlantiruvchi interaktiv ta'lim platformasidir. Platforma bolalarga sayyoralar bo'ylab qiziqarli o'yinlar, ertaklar, so'z boyligi va sun'iy intellekt orqali ta'lim beradi.</p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                <button class="btn btn-sm btn-secondary" onclick="handleToggleFaqStatus(1)" style="font-size: 11px; padding: 4px 8px;">
+                  <i class="bi bi-eye-slash"></i> Yashirish
+                </button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="action-btn-sm" title="Tahrirlash" onclick="openFaqModal(1)"><i class="bi bi-pencil-fill"></i></button>
+                  <button class="action-btn-sm delete-btn" title="O'chirish" onclick="handleDeleteFaq(1)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card item-card faq-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #eab308; padding: 18px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px;">#2</span>
+                    <span class="status-badge status-active">Faol</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">ID: 2</div>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.4;">
+                  <i class="bi bi-patch-question text-yellow" style="margin-right: 4px;"></i> Alloma AI yordamchisi qanday ishlaydi va uning ovozli muloqot xususiyati bormi?
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; margin-bottom: 16px;">Alloma AI — Google Gemini ilg'or sun'iy intellekt texnologiyasi asosida yaratilgan pedagogik yordamchidir. Bola unga mikrofon orqali ovozli savollar berishi, darslar haqida so'rashi, ertaklar eshitishi yoki yangi bilimlarni xavfsiz va tushunarli tilda o'rganishi mumkin.</p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                <button class="btn btn-sm btn-secondary" onclick="handleToggleFaqStatus(2)" style="font-size: 11px; padding: 4px 8px;">
+                  <i class="bi bi-eye-slash"></i> Yashirish
+                </button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="action-btn-sm" title="Tahrirlash" onclick="openFaqModal(2)"><i class="bi bi-pencil-fill"></i></button>
+                  <button class="action-btn-sm delete-btn" title="O'chirish" onclick="handleDeleteFaq(2)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card item-card faq-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #eab308; padding: 18px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px;">#3</span>
+                    <span class="status-badge status-active">Faol</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">ID: 3</div>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.4;">
+                  <i class="bi bi-patch-question text-yellow" style="margin-right: 4px;"></i> Uran sayyorasida ingliz tilini qanday o'rganish mumkin (So'zlar, talaffuz va testlar)?
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; margin-bottom: 16px;">Uran sayyorasi bolalarning chet tilini o'rganishi uchun mo'ljallangan bo'lib, 10 ta asosiy mavzu (Mevalar, Hayvonlar, Ranglar, Maktab, Oila va h.k.), har bir so'zning sof audio talaffuzi, rasmlar, transkripsiya va 4 ta variantli interaktiv test savollarini o'z ichiga oladi.</p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                <button class="btn btn-sm btn-secondary" onclick="handleToggleFaqStatus(3)" style="font-size: 11px; padding: 4px 8px;">
+                  <i class="bi bi-eye-slash"></i> Yashirish
+                </button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="action-btn-sm" title="Tahrirlash" onclick="openFaqModal(3)"><i class="bi bi-pencil-fill"></i></button>
+                  <button class="action-btn-sm delete-btn" title="O'chirish" onclick="handleDeleteFaq(3)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card item-card faq-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #eab308; padding: 18px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px;">#4</span>
+                    <span class="status-badge status-active">Faol</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">ID: 4</div>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.4;">
+                  <i class="bi bi-patch-question text-yellow" style="margin-right: 4px;"></i> Ota-onalar farzandining ta'lim jarayonini qanday nazorat qiladi (Ota-onalar burchagi)?
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; margin-bottom: 16px;">Maxsus himoyalangan 'Ota-onalar burchagi' orqali bolaning qaysi sayyoralarni o'rganganligi, kunlik sarflagan vaqti, test natijalari, so'z boyligi o'sishi va muvaffaqiyat hisobotlarini real vaqtda kuzatib borish mumkin.</p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                <button class="btn btn-sm btn-secondary" onclick="handleToggleFaqStatus(4)" style="font-size: 11px; padding: 4px 8px;">
+                  <i class="bi bi-eye-slash"></i> Yashirish
+                </button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="action-btn-sm" title="Tahrirlash" onclick="openFaqModal(4)"><i class="bi bi-pencil-fill"></i></button>
+                  <button class="action-btn-sm delete-btn" title="O'chirish" onclick="handleDeleteFaq(4)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card item-card faq-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #eab308; padding: 18px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: rgba(234, 179, 8, 0.15); color: #eab308; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px;">#5</span>
+                    <span class="status-badge status-active">Faol</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">ID: 5</div>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 8px; line-height: 1.4;">
+                  <i class="bi bi-patch-question text-yellow" style="margin-right: 4px;"></i> Mobil ilovadan internet bo'lmaganda ham foydalanish mumkinmi (Offline rejim)?
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; margin-bottom: 16px;">Ha! Yuklab olingan barcha sayyora darslari, audio ertaklar va ingliz tili so'zlari offline rejimda, internetsiz ham to'liq va uzluksiz ishlaydi. Sayr yoki safarda internet talab etilmaydi.</p>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                <button class="btn btn-sm btn-secondary" onclick="handleToggleFaqStatus(5)" style="font-size: 11px; padding: 4px 8px;">
+                  <i class="bi bi-eye-slash"></i> Yashirish
+                </button>
+                <div style="display: flex; gap: 6px;">
+                  <button class="action-btn-sm" title="Tahrirlash" onclick="openFaqModal(5)"><i class="bi bi-pencil-fill"></i></button>
+                  <button class="action-btn-sm delete-btn" title="O'chirish" onclick="handleDeleteFaq(5)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. ALLOMA AI YORDAMCHI (ADMIN AI CHAT) TAB -->
+        <section id="tab-ai" class="tab-content">
+          <div class="ai-chat-layout">
+            
+            <!-- Voice Talk Hero Card (Faqat Mikrofon orqali savol berish rejimi) -->
+            <div class="ai-voice-hero-card">
+              <div class="voice-hero-header">
+                <div class="voice-hero-title">
+                  <i class="bi bi-mic-fill text-yellow"></i>
+                  <span>Ovozli Savol Berish (Mikrofon orqali yozmasdan gapirish)</span>
+                </div>
+                <div class="voice-settings-bar">
+                  <div class="voice-lang-select-wrap">
+                    <i class="bi bi-translate"></i>
+                    <select id="voice-lang-select" onchange="changeVoiceLanguage(this.value)">
+                      <option value="uz-UZ" selected>🇺🇿 O'zbekcha</option>
+                      <option value="ru-RU">🇷🇺 Русский</option>
+                      <option value="en-US">🇬🇧 English</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Big Voice Mic Interaction Zone -->
+              <div class="voice-action-zone">
+                <button type="button" class="voice-mic-main-btn" id="voice-mic-btn" onclick="toggleVoiceRecording()" title="Gapirish uchun bosing">
+                  <div class="mic-pulse-ring"></div>
+                  <i class="bi bi-mic-fill" id="voice-mic-icon"></i>
+                </button>
+                <div class="voice-status-wrap">
+                  <h4 class="voice-status-title" id="voice-status-title">Mikrofonga bosing va bemalol gapiring!</h4>
+                  <p class="voice-status-desc" id="voice-status-desc">Savolingizni ayting — AI matn ko'rinishida javob beradi 💬</p>
+                </div>
+              </div>
+
+              <!-- Live Speech Transcript Banner -->
+              <div class="live-transcript-box" id="live-transcript-box" style="display: none;">
+                <span class="transcript-tag">Eshitilmoqda:</span>
+                <span class="transcript-text" id="live-transcript-text">...</span>
+              </div>
+            </div>
+
+
+            <!-- Header Info -->
+            <div class="ai-header-card">
+              <div class="ai-header-left">
+                <div class="ai-avatar-icon">
+                  <i class="bi bi-robot"></i>
+                </div>
+                <div>
+                  <h3 class="ai-title">Alloma AI Ta'lim Ustozi <span class="ai-badge-model">Google Gemini 3.6 Flash</span></h3>
+                  <p class="ai-subtitle">Bolalar ta'limi, ertaklar, matematika va bolalar psixologiyasi bo'yicha aqlli yordamchi</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Messages Display Area -->
+            <div class="ai-messages-container" id="ai-messages-container">
+              <div class="ai-message-row bot">
+                <div class="ai-bubble-avatar">
+                  <i class="bi bi-robot"></i>
+                </div>
+                <div class="ai-bubble-body">
+                  <div class="ai-bubble-header">
+                    <span class="ai-bubble-name">Alloma AI</span>
+                    <span class="ai-bubble-time">Hozir</span>
+                  </div>
+                  <div class="ai-bubble-text">
+                    Assalomu alaykum! Men bolalar ta'lim platformasining do'stona AI ustozi — <strong>Alloma AI</strong>man. 🌟<br><br>
+                    Yuqoridagi <strong>🪐 Sayyora tugmalaridan birini bosing</strong> — men sizga ushbu sayyora vazifasi, o'yinlari va nimalarni o'rganishimizni darhol ovoz chiqarib tanishtirib beraman! 💬
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Chat Input Controls (Yozish ham mumkin) -->
+            <div class="ai-input-card">
+              <div class="ai-meta-inputs">
+                <div class="ai-meta-group" style="min-width: 170px;">
+                  <i class="bi bi-globe-americas"></i>
+                  <select id="ai-planet-select" onchange="selectPlanetAndAutoSpeak(this.value)" style="background: none; border: none; color: #fff; width: 100%; outline: none; font-size: 12.5px; cursor: pointer;">
+                    <option value="" style="background: #1e293b;">🪐 Barcha Sayyoralar (Umumiy)</option>
+                    <option value="42" style="background: #1e293b;">🧠 Kognitiv (Mantiq & Fikrlash)</option>
+                    <option value="43" style="background: #1e293b;">🏃 Jismoniy va motorika (Harakat & Mashq)</option>
+                    <option value="44" style="background: #1e293b;">🗣️ Nutq va til (Talaffuz & Ertaklar)</option>
+                    <option value="45" style="background: #1e293b;">🤝 Ijtimoiy (Do'stlik & Hamkorlik)</option>
+                    <option value="46" style="background: #1e293b;">❤️ Emotsional (Hissiyot & Kayfiyat)</option>
+                    <option value="47" style="background: #1e293b;">⚖️ Axloqiy (Odob & Qadriyat)</option>
+                    <option value="48" style="background: #1e293b;">🎨 Ijodkorlik (San'at & Tasavvur)</option>
+                    <option value="49" style="background: #1e293b;">🎯 O'z-o'zini boshqarish (Intizom & Reja)</option>
+                    <option value="50" style="background: #1e293b;">☀️ Quyosh (Sehrli AI & Suhbat)</option>
+                  </select>
+                </div>
+                <div class="ai-meta-group" style="max-width: 140px;">
+                  <i class="bi bi-person-fill"></i>
+                  <input type="text" id="ai-child-name" placeholder="Ismi (Ali)">
+                </div>
+                <div class="ai-meta-group" style="max-width: 110px;">
+                  <i class="bi bi-calendar-event"></i>
+                  <input type="number" id="ai-child-age" placeholder="Yoshi" value="7" min="1" max="17" title="Bolaning yoshi">
+                </div>
+                <!-- Tezkor yosh presetlari (3-7 yosh va 7-11 yosh) -->
+                <div class="ai-age-presets" style="display: flex; gap: 6px; align-items: center;">
+                  <button type="button" class="btn-age-chip active" onclick="setAiAge(5, this)" title="3-7 yosh: Quvnoq yosh bola ovozi">👶 3-7 yosh</button>
+                  <button type="button" class="btn-age-chip" onclick="setAiAge(9, this)" title="7-11 yosh: Sal katta odam ovozi">🧒 7-11 yosh</button>
+                </div>
+                <button type="button" class="ai-clear-btn" onclick="clearAiChat()" title="Suhbatni tozalash">
+                  <i class="bi bi-trash3"></i> Tozalash
+                </button>
+              </div>
+
+              <form id="ai-chat-form" class="ai-chat-form" onsubmit="handleSendAdminAi(event)">
+                <input type="text" id="ai-input-text" class="ai-main-input" placeholder="Yoki bu yerga yozishingiz mumkin... (Mikrofon ham ishlaydi)" autocomplete="off">
+                <button type="button" class="btn btn-secondary ai-mic-mini-btn" onclick="toggleVoiceRecording()" title="Ovozli gapirish">
+                  <i class="bi bi-mic-fill" id="ai-mic-mini-icon"></i>
+                </button>
+                <button type="submit" class="btn btn-yellow ai-submit-btn" id="ai-submit-btn">
+                  <i class="bi bi-send-fill"></i> <span>Yuborish</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- PLANET CREATE/EDIT MODAL -->
+  <div id="planet-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'planet-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="planet-modal-title">
+          <i class="bi bi-globe-americas text-yellow"></i> 
+          <span>Yangi Sayyora Qo'shish</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closePlanetModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="planet-form" onsubmit="handleSavePlanet(event)">
+        <input type="hidden" id="planet-id">
+        <input type="hidden" id="planet-image-val" value="/images/planets/earth.svg">
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="planet-title">Sayyora Nomi: <span class="required">*</span></label>
+            <input type="text" id="planet-title" class="form-control" placeholder="Masalan: FIKRLASH VA BILIM" required autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="planet-desc">Tavsif / Maqsadi: <span class="required">*</span></label>
+            <textarea id="planet-desc" class="form-control" rows="3" placeholder="Masalan: Masalani tushunish, yechimni topish." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Sayyora Rasmi (3D Rasm tanlash):</label>
+            <select id="planet-preset-select" class="form-control" onchange="handlePlanetPresetChange(this.value)">
+              <option value="/images/planets/earth.svg">🌍 Yashil/Ko'k (Fikrlash va bilim)</option>
+              <option value="/images/planets/mars.svg">🪐 To'q sariq (Nutq va til)</option>
+              <option value="/images/planets/cyan-rings.svg">💫 Havorang halqali (O'zini boshqarish)</option>
+              <option value="/images/planets/coral.svg">🌸 Qizil/Pushti (Hissiyotlarni anglash)</option>
+              <option value="/images/planets/deep-blue.svg">🌌 To'q ko'k spiral (Ijodkorlik va tasavvur)</option>
+              <option value="/images/planets/saturn.svg">⭐ Tillarang halqali (Ijtimoiy ko'nikmalar)</option>
+              <option value="/images/planets/purple.svg">🔮 Binafsharang (Harakat va sog'lik)</option>
+              <option value="/images/planets/teal-moon.svg">🌑 Zangori/Yashil (Qadriyat va mas'uliyat)</option>
+              <option value="custom">🔗 Boshqa rasm havolasi (URL kiritish)...</option>
+            </select>
+          </div>
+
+          <!-- Custom URL Input -->
+          <div class="form-group" id="custom-url-group" style="display: none;">
+            <label for="planet-custom-url">Rasm havolasi (URL):</label>
+            <input type="text" id="planet-custom-url" class="form-control" placeholder="https://... yoki /images/..." oninput="handleCustomUrlChange(this.value)">
+          </div>
+
+          <!-- File Upload Input -->
+          <div class="form-group">
+            <label for="planet-file-upload"><i class="bi bi-upload"></i> Yoki kompyuterdan rasm yuklash:</label>
+            <input type="file" id="planet-file-upload" class="form-control file-input" accept="image/*" onchange="handleFileUpload(event, 'planet')">
+          </div>
+
+          <!-- Image Preview -->
+          <div class="planet-preview-wrap">
+            <div class="planet-preview-box">
+              <img id="planet-preview-img" src="/images/planets/earth.svg" alt="Planet Preview">
+            </div>
+            <div class="preview-info">
+              <div class="preview-title">Tanlangan Sayyora Rasmi</div>
+              <span class="preview-text" id="planet-preview-name">/images/planets/earth.svg</span>
+            </div>
+          </div>
+
+          <!-- Card Gradient Fonini Tanlash -->
+          <div class="form-group" style="margin-top: 14px;">
+            <label><i class="bi bi-palette-fill text-yellow"></i> Card Gradient Foni (Ranglar):</label>
+            <div class="gradient-picker-wrap">
+              <div class="gradient-inputs-row">
+                <div class="gradient-color-col">
+                  <span class="color-label">1-Rang:</span>
+                  <input type="color" id="planet-grad-color1" class="color-picker-input" value="#ff5e00" oninput="handleGradientChange()">
+                </div>
+                <div class="gradient-color-col">
+                  <span class="color-label">2-Rang:</span>
+                  <input type="color" id="planet-grad-color2" class="color-picker-input" value="#ff8c00" oninput="handleGradientChange()">
+                </div>
+                <div class="gradient-color-col" style="flex: 1.4;">
+                  <span class="color-label">Yo'nalish (Gradus):</span>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="text" id="planet-grad-angle" class="form-control" value="150deg" placeholder="150deg" oninput="handleGradientChange()" style="padding: 6px 8px; font-size: 13px; width: 85px; font-weight: 700; text-align: center;" title="Ixtiyoriy burchakni yozing (masalan: 120deg, 45deg)">
+                    <select id="planet-grad-angle-select" class="form-control" onchange="handleAngleSelectChange(this.value)" style="padding: 6px 8px; font-size: 12px; flex: 1;">
+                      <option value="">Tayyor burchaklar ▾</option>
+                      <option value="150deg">150° (Diagonal)</option>
+                      <option value="135deg">135° (Burchakli)</option>
+                      <option value="180deg">180° (Yuqoridan-pastga)</option>
+                      <option value="90deg">90° (Chapdan-o'ngga)</option>
+                      <option value="45deg">45° (Pastki burchak)</option>
+                      <option value="0deg">0° (Pastdan-yuqoriga)</option>
+                      <option value="270deg">270° (O'ngdan-chapga)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tayyor Preset Ranglar -->
+              <div class="gradient-presets-wrap">
+                <span class="preset-label">Andozalar:</span>
+                <div class="gradient-preset-chips">
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #ff5e00, #ff8c00);" onclick="setPlanetGradient('#ff5e00', '#ff8c00', '150deg')" title="Merkuriy (Olovrang)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #7c1fc2, #a824d6);" onclick="setPlanetGradient('#7c1fc2', '#a824d6', '150deg')" title="Venera (Binafsha)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #0077ff, #00b08a);" onclick="setPlanetGradient('#0077ff', '#00b08a', '150deg')" title="Yer (Ko'k-Zangori)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #d32f2f, #991b1b);" onclick="setPlanetGradient('#d32f2f', '#991b1b', '150deg')" title="Mars (Qizil)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #0265dc, #0099aa);" onclick="setPlanetGradient('#0265dc', '#0099aa', '150deg')" title="Yupiter (Moviy)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #e65100, #f57c00);" onclick="setPlanetGradient('#e65100', '#f57c00', '150deg')" title="Saturn (To'q sariq)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #e0246a, #7b1fa2);" onclick="setPlanetGradient('#e0246a', '#7b1fa2', '150deg')" title="Uran (Pushti-Binafsha)"></button>
+                  <button type="button" class="preset-chip" style="background: linear-gradient(150deg, #0d47a1, #1a237e);" onclick="setPlanetGradient('#0d47a1', '#1a237e', '150deg')" title="Neptun (To'q ko'k)"></button>
+                </div>
+              </div>
+
+              <!-- Gradient Preview Bar -->
+              <div class="gradient-preview-bar" id="planet-gradient-preview" style="background: linear-gradient(150deg, #ff5e00, #ff8c00);">
+                <span>Card foni jonli ko'rinishi ✨</span>
+              </div>
+              <input type="hidden" id="planet-gradient-val" value="linear-gradient(150deg, #ff5e00 0%, #ff8c00 100%)">
+            </div>
+          </div>
+
+          <!-- Sayyora Videosi (Sinab ko'rish darsi) -->
+          <div class="form-group" style="margin-top: 16px;">
+            <label for="planet-video-url"><i class="bi bi-play-btn-fill text-yellow"></i> Sayyora Videosi (Sinab ko'rish darsi):</label>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <input type="text" id="planet-video-url" class="form-control" placeholder="/video_2026-08-20_10-54-38.mp4 yoki https://..." oninput="handlePlanetVideoUrlChange(this.value)">
+              <button type="button" class="btn btn-sm btn-secondary" onclick="clearPlanetVideo()" title="Tozalash" style="white-space: nowrap; padding: 6px 12px; font-size: 12px;">
+                <i class="bi bi-x-circle"></i> O'chirish
+              </button>
+            </div>
+
+            <!-- Video File Upload Input -->
+            <div style="margin-bottom: 8px;">
+              <label for="planet-video-file-upload" style="font-size: 12px; color: var(--text-muted); cursor: pointer; display: block; margin-bottom: 4px;">
+                <i class="bi bi-upload"></i> Yoki kompyuterdan yangi video (.mp4, .webm) yuklash:
+              </label>
+              <input type="file" id="planet-video-file-upload" class="form-control file-input" accept="video/mp4,video/webm,video/ogg,video/*" onchange="handlePlanetVideoFileUpload(event)">
+            </div>
+
+            <!-- Video Preview Player -->
+            <div id="planet-video-preview-wrap" style="background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); margin-top: 8px; display: none;">
+              <video id="planet-video-preview-player" controls playsinline style="width: 100%; max-height: 180px; display: block;"></video>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+            <label for="planet-status">Holati:</label>
+            <select id="planet-status" class="form-control">
+              <option value="active">Faol (Active)</option>
+              <option value="inactive">Nofaol (Inactive)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closePlanetModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-yellow" id="save-planet-btn">
+            <i class="bi bi-check2-circle"></i> Saqlash
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- AMENITY CREATE/EDIT MODAL -->
+  <div id="amenity-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'amenity-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modal-title">
+          <i class="bi bi-plus-circle text-yellow"></i> 
+          <span>Yangi Qulaylik Qo'shish</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeAmenityModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="amenity-form" onsubmit="handleSaveAmenity(event)">
+        <input type="hidden" id="amenity-id">
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="amenity-title">Qulaylik Nomi: <span class="required">*</span></label>
+            <input type="text" id="amenity-title" class="form-control" placeholder="Masalan: Ota-ona nazorati" required autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="amenity-desc">Tavsif / Ma'lumot: <span class="required">*</span></label>
+            <textarea id="amenity-desc" class="form-control" rows="4" placeholder="Qulaylik haqida batafsil ma'lumot kiriting..." required></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="amenity-status">Holati:</label>
+            <select id="amenity-status" class="form-control">
+              <option value="active">Faol (Active)</option>
+              <option value="inactive">Nofaol (Inactive)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeAmenityModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-yellow" id="save-amenity-btn">
+            <i class="bi bi-check2-circle"></i> Saqlash
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TEAM MEMBER CREATE/EDIT MODAL -->
+  <div id="team-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'team-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="team-modal-title">
+          <i class="bi bi-person-plus-fill text-yellow"></i> 
+          <span>Yangi Jamoa A'zosi Qo'shish</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeTeamModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="team-form" onsubmit="handleSaveTeam(event)">
+        <input type="hidden" id="team-id">
+        <input type="hidden" id="team-image-val" value="/images/team/member1.svg">
+        
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label for="team-first-name">Ismi: <span class="required">*</span></label>
+              <input type="text" id="team-first-name" class="form-control" placeholder="Masalan: Aziz" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+              <label for="team-last-name">Familiyasi: <span class="required">*</span></label>
+              <input type="text" id="team-last-name" class="form-control" placeholder="Masalan: Rahimov" required autocomplete="off">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="team-role">Yo'nalishi / Lavozimi / Kasbi: <span class="required">*</span></label>
+            <input type="text" id="team-role" class="form-control" placeholder="Masalan: Bosh Ta'lim Metodisti yoki Bolalar Psixologi" required autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label for="team-desc">Tavsif / Ma'lumot (Description):</label>
+            <textarea id="team-desc" class="form-control" rows="2" placeholder="Masalan: Bolalar ta'limi va metodikasi bo'yicha yetakchi mutaxassis..."></textarea>
+          </div>
+
+          <!-- Rasm yuklash (Kompyuterdan yoki URL) -->
+          <div class="form-group">
+            <label for="team-file-upload"><i class="bi bi-upload text-yellow"></i> Kompyuterdan Rasm Yuklash:</label>
+            <input type="file" id="team-file-upload" class="form-control file-input" accept="image/*" onchange="handleFileUpload(event, 'team')">
+          </div>
+
+          <div class="form-group">
+            <label for="team-custom-url">Yoki Rasm Havolasi (URL):</label>
+            <input type="text" id="team-custom-url" class="form-control" placeholder="https://... yoki /images/..." oninput="handleTeamCustomUrlChange(this.value)">
+          </div>
+
+          <!-- Image Preview -->
+          <div class="planet-preview-wrap">
+            <div class="planet-preview-box" style="border-radius: var(--radius-full); overflow: hidden;">
+              <img id="team-preview-img" src="/images/team/member1.svg" alt="Team Preview">
+            </div>
+            <div class="preview-info">
+              <div class="preview-title">Tanlangan A'zo Rasmi</div>
+              <span class="preview-text" id="team-preview-name">/images/team/member1.svg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeTeamModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-yellow" id="save-team-btn">
+            <i class="bi bi-check2-circle"></i> Saqlash
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- GALLERY UPLOAD MODAL -->
+  <div id="gallery-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'gallery-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="gallery-modal-title">
+          <i class="bi bi-cloud-arrow-up-fill text-yellow"></i> 
+          <span>Galereyaga Yangi Rasm Yuklash</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeGalleryModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="gallery-form" onsubmit="handleSaveGallery(event)">
+        <input type="hidden" id="gallery-image-val" value="/images/gallery/photo1.svg">
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="gallery-file-upload"><i class="bi bi-upload text-yellow"></i> Kompyuterdan Rasm Tanlash: <span class="required">*</span></label>
+            <input type="file" id="gallery-file-upload" class="form-control file-input" accept="image/*" onchange="handleFileUpload(event, 'gallery')">
+          </div>
+
+          <div class="form-group">
+            <label for="gallery-custom-url">Yoki Rasm Havolasi (URL):</label>
+            <input type="text" id="gallery-custom-url" class="form-control" placeholder="https://... yoki /images/..." oninput="handleGalleryCustomUrlChange(this.value)">
+          </div>
+
+          <div class="form-group">
+            <label for="gallery-title">Rasm Sarlavhasi / Izoh (Ixtiyoriy):</label>
+            <input type="text" id="gallery-title" class="form-control" placeholder="Masalan: Dars jarayoni yoki Bolalar faoliyati">
+          </div>
+
+          <!-- Image Preview -->
+          <div class="planet-preview-wrap">
+            <div class="planet-preview-box" style="width: 80px; height: 60px; border-radius: var(--radius-sm); overflow: hidden;">
+              <img id="gallery-preview-img" src="/images/gallery/photo1.svg" alt="Gallery Preview" style="max-width: 100%; max-height: 100%; object-fit: cover;">
+            </div>
+            <div class="preview-info">
+              <div class="preview-title">Tanlangan Rasm</div>
+              <span class="preview-text" id="gallery-preview-name">/images/gallery/photo1.svg</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeGalleryModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-yellow" id="save-gallery-btn">
+            <i class="bi bi-cloud-arrow-up-fill"></i> Galereyaga Qo'shish
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FAQ ADD/EDIT MODAL -->
+  <div id="faq-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'faq-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="faq-modal-title">
+          <i class="bi bi-question-circle-fill text-yellow"></i> 
+          <span>Yangi FAQ Savol Qo'shish</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeFaqModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="faq-form" onsubmit="handleSaveFaq(event)">
+        <input type="hidden" id="faq-id" value="">
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="faq-name">Savol Sarlavhasi (Name): <span class="required">*</span></label>
+            <input type="text" id="faq-name" class="form-control" placeholder="Masalan: Kichik Alloma nima?" required>
+          </div>
+
+          <div class="form-group">
+            <label for="faq-desc">Javob Matni (Description): <span class="required">*</span></label>
+            <textarea id="faq-desc" class="form-control" rows="4" placeholder="Savolga batafsil va tushunarli javob matnini kiriting..." required></textarea>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="faq-status">Holati:</label>
+              <select id="faq-status" class="form-control">
+                <option value="active" selected>Faol (Ko'rsatilsin)</option>
+                <option value="inactive">Nofaol (Yashirilsin)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="faq-order">Tartib Raqami:</label>
+              <input type="number" id="faq-order" class="form-control" value="0" min="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeFaqModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-yellow" id="save-faq-btn">
+            <i class="bi bi-check2-circle"></i> Saqlash
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- URAN WORDS & QUIZ MODAL -->
+  <div id="uran-words-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'uran-words-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 860px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div>
+          <h3 id="uran-modal-title"><i class="bi bi-translate text-yellow"></i> Kategoriya So'zlari va Test Savollari</h3>
+          <p id="uran-modal-subtitle" style="font-size:13px; color:#64748b; margin:4px 0 0 0;"></p>
+        </div>
+        <button type="button" class="modal-close" onclick="closeUranModal()" title="Yopish (Esc)">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <div id="uran-words-container">
+          <div class="loading-state">Yuklanmoqda...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- URAN CATEGORY ADD/EDIT MODAL -->
+  <div id="uran-category-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'uran-category-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div>
+          <h3 id="uran-category-modal-title"><i class="bi bi-folder-plus text-yellow"></i> Yangi Kategoriya Qo'shish</h3>
+          <p style="font-size:13px; color:#64748b; margin:4px 0 0 0;">Uran sayyorasidagi lug'at mavzusi ma'lumotlari</p>
+        </div>
+        <button type="button" class="modal-close" onclick="closeUranCategoryModal()" title="Yopish (Esc)">&times;</button>
+      </div>
+      <form id="uran-category-form" onsubmit="handleSaveUranCategory(event)">
+        <input type="hidden" id="uran-cat-id">
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="uran-cat-name">O'zbekcha Nomi: <span class="required">*</span></label>
+              <input type="text" id="uran-cat-name" class="form-control" placeholder="Masalan: Koinot va Sayyoralar" required>
+            </div>
+            <div class="form-group">
+              <label for="uran-cat-name-en">Inglizcha Nomi: <span class="required">*</span></label>
+              <input type="text" id="uran-cat-name-en" class="form-control" placeholder="Masalan: Space & Planets" required>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="uran-cat-name-ru">Ruscha Nomi:</label>
+              <input type="text" id="uran-cat-name-ru" class="form-control" placeholder="Masalan: Космос и Планеты">
+            </div>
+            <div class="form-group">
+              <label for="uran-cat-order">Tartib Raqami:</label>
+              <input type="number" id="uran-cat-order" class="form-control" placeholder="1, 2, 3..." value="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="uran-cat-desc">Mavzu Tavsifi:</label>
+            <textarea id="uran-cat-desc" class="form-control" rows="2" placeholder="Ushbu mavzu haqida qisqacha ma'lumot..."></textarea>
+          </div>
+
+          <!-- Rasm tanlash yoki yuklash -->
+          <div class="form-group" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px;">
+            <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span><i class="bi bi-image"></i> Kategoriya Rasmi (PNG):</span>
+              <span id="uran-cat-img-preview-label" style="font-size: 12px; color: #38bdf8;">fruits.png</span>
+            </label>
+            
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 12px;">
+              <div style="width: 60px; height: 60px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; padding: 6px; flex-shrink: 0;">
+                <img id="uran-cat-preview-img" src="/images/categories/fruits.png" alt="Preview" style="max-height: 48px; max-width: 48px; object-fit: contain;">
+              </div>
+              <div style="flex: 1;">
+                <input type="text" id="uran-cat-image" class="form-control" placeholder="/images/categories/fruits.png" style="font-size: 12px; margin-bottom: 6px;" oninput="updateUranCatImagePreview(this.value)">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <label class="btn btn-sm btn-secondary" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 10px;">
+                    <i class="bi bi-cloud-arrow-up-fill text-yellow"></i> Yangi Rasm Yuklash (PNG)
+                    <input type="file" id="uran-cat-file-input" accept="image/png,image/jpeg,image/svg+xml" style="display: none;" onchange="handleUploadUranCatImage(this)">
+                  </label>
+                  <span id="uran-cat-upload-status" style="font-size: 11px; color: var(--text-muted);"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tezkor tayyor rasmlar -->
+            <div>
+              <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Standart rasmlardan birini tanlang:</span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="uran-preset-images">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="uran-cat-status">Holati:</label>
+            <select id="uran-cat-status" class="form-control">
+              <option value="active">Faol (Active)</option>
+              <option value="inactive">Nofaol (Inactive)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" id="uran-cat-delete-btn" class="btn btn-danger" style="display: none;" onclick="handleDeleteCurrentCatFromModal()">
+            <i class="bi bi-trash"></i> Mavzuni O'chirish
+          </button>
+          <div style="display: flex; gap: 10px; margin-left: auto;">
+            <button type="button" class="btn btn-secondary" onclick="closeUranCategoryModal()">Bekor qilish</button>
+            <button type="submit" class="btn btn-yellow" id="save-uran-cat-btn">
+              <i class="bi bi-check2-circle"></i> Kategoriyani Saqlash
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- URAN WORD ADD/EDIT MODAL -->
+  <div id="uran-word-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'uran-word-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 760px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div>
+          <h3 id="uran-word-modal-title"><i class="bi bi-plus-circle text-yellow"></i> Yangi So'z Qo'shish</h3>
+          <p id="uran-word-modal-cat" style="font-size:13px; color:#64748b; margin:4px 0 0 0;"></p>
+        </div>
+        <button type="button" class="modal-close" onclick="closeUranWordModal()" title="Yopish (Esc)">&times;</button>
+      </div>
+      <form id="uran-word-form" onsubmit="handleSaveUranWord(event)">
+        <input type="hidden" id="uran-word-id">
+        <input type="hidden" id="uran-word-category-id">
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+          
+          <!-- Category selector -->
+          <div class="form-group">
+            <label for="uran-word-category-select">Lug'at Mavzusi (Kategoriya): <span class="required">*</span></label>
+            <select id="uran-word-category-select" class="form-control" required style="background: rgba(15, 23, 42, 0.8);">
+              <option value="" disabled selected>-- Mavzuni tanlang --</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label for="uran-word-en" style="margin: 0;">Inglizcha So'z: <span class="required">*</span></label>
+                <button type="button" class="btn-link" onclick="handleAiSuggestWord()" id="ai-suggest-btn" style="font-size: 11px; color: #818cf8; font-weight: 700; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); border-radius: 6px; padding: 2px 8px; cursor: pointer;">
+                  <i class="bi bi-stars"></i> AI Tarjima
+                </button>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <input type="text" id="uran-word-en" class="form-control" placeholder="Masalan: Strawberry" required style="flex: 1;">
+                <button type="button" class="btn btn-secondary" onclick="playWordAudio(document.getElementById('uran-word-en').value)" title="Talaffuzni eshitish" style="padding: 0 10px;">
+                  <i class="bi bi-volume-up-fill"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="uran-word-uz">O'zbekcha Tarjima: <span class="required">*</span></label>
+              <input type="text" id="uran-word-uz" class="form-control" placeholder="Masalan: Qulupnay" required>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="uran-word-ru">Ruscha Tarjima:</label>
+              <input type="text" id="uran-word-ru" class="form-control" placeholder="Masalan: Клубника">
+            </div>
+            <div class="form-group">
+              <label for="uran-word-transcription">Transkripsiya (Talaffuz):</label>
+              <input type="text" id="uran-word-transcription" class="form-control" placeholder="Masalan: [ˈstrɔː.bər.i]">
+            </div>
+            <div class="form-group">
+              <label for="uran-word-pos">So'z Turkumi: <span class="required">*</span></label>
+              <select id="uran-word-pos" class="form-control" style="background: rgba(15, 23, 42, 0.8);">
+                <option value="noun" selected>Ot (Noun)</option>
+                <option value="adjective">Sifat (Adjective)</option>
+                <option value="verb">Fe'l (Verb)</option>
+                <option value="adverb">Ravish (Adverb)</option>
+                <option value="pronoun">Olmosh (Pronoun)</option>
+                <option value="preposition">Old ko'makchi (Preposition)</option>
+                <option value="other">Boshqa (Other)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="uran-word-example">Misol Jumla (Inglizcha):</label>
+              <textarea id="uran-word-example" class="form-control" rows="2" placeholder="Masalan: Strawberries are red and very sweet."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="uran-word-example-uz">Misol Jumla Tarjimasi (O'zbekcha):</label>
+              <textarea id="uran-word-example-uz" class="form-control" rows="2" placeholder="Masalan: Qulupnaylar qizil va juda shirin."></textarea>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="uran-word-image">Maxsus Rasm URL (bo'sh qolsa kategoriya rasmi olinadi):</label>
+              <input type="text" id="uran-word-image" class="form-control" placeholder="/images/categories/fruits.png">
+            </div>
+            <div class="form-group">
+              <label for="uran-word-order">Tartib Raqami:</label>
+              <input type="number" id="uran-word-order" class="form-control" value="0" placeholder="1, 2, 3...">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" id="uran-word-delete-btn" class="btn btn-danger" style="display: none;" onclick="handleDeleteCurrentWordFromModal()">
+            <i class="bi bi-trash"></i> So'zni O'chirish
+          </button>
+          <div style="display: flex; gap: 10px; margin-left: auto;">
+            <button type="button" class="btn btn-secondary" onclick="closeUranWordModal()">Bekor qilish</button>
+            <button type="submit" class="btn btn-yellow" id="save-uran-word-btn">
+              <i class="bi bi-check2-circle"></i> So'zni Saqlash
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  
+  <!-- =========================================================================
+       3D COSMIC PARTICLE UNIVERSE MODAL (Three.js WebGL Engine)
+       ========================================================================= -->
+    <!-- =========================================================================
+       3D COSMIC PARTICLE UNIVERSE MODAL (Three.js WebGL Engine - Video Style)
+       ========================================================================= -->
+    <!-- KICHIK ALLOMA 3D COSMIC MODAL -->
+    <!-- KICHIK ALLOMA 3D COSMIC MODAL (Cinematic Video Experience) -->
+  <div id="cosmic-3d-modal">
+    <div id="cosmic-3d-canvas-container"></div>
+    <div id="cosmic-ambient-glow" class="cosmic-ambient-glow"></div>
+
+    <!-- Close Button -->
+    <button type="button" class="cosmic-close-btn" onclick="closeCosmicUniverse()" title="Yopish (Esc)">
+      <i class="bi bi-x-lg"></i>
+    </button>
+
+    <!-- Vertical Step Indicators (Left Side) -->
+    <div id="cosmic-steps-indicator" class="cosmic-steps-indicator"></div>
+
+    <!-- Editorial Text HUD (Left) -->
+    <div class="cosmic-editorial-hud">
+      <div id="cosmic-text-block" class="cosmic-text-block">
+        <div id="cosmic-slide-badge" class="cosmic-slide-badge">01 / 06 • SAYYORA</div>
+        <h1 id="cosmic-slide-title" class="cosmic-slide-title">KICHIK ALLOMA</h1>
+        <div id="cosmic-slide-subtitle" class="cosmic-slide-subtitle">8 Sayyorali Rivojlanish Ekotizimi</div>
+        <p id="cosmic-slide-desc" class="cosmic-slide-desc">
+          Bolajonlar uchun interaktiv kosmik ta'lim platformasi.
+        </p>
+        <div id="cosmic-items-grid" class="cosmic-items-grid"></div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Controls -->
+    <div class="cosmic-bottom-nav">
+      <button type="button" class="cosmic-nav-arrow" onclick="prevCosmicSlide()" title="Oldingi (↑)">
+        <i class="bi bi-chevron-up"></i>
+      </button>
+      <div id="cosmic-scroll-status" class="cosmic-scroll-status">
+        <span>↓ Mishka skrolli bilan o'tkazing</span>
+      </div>
+      <button type="button" class="cosmic-nav-arrow" onclick="nextCosmicSlide()" title="Keyingi (↓)">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    </div>
+  </div>
+
+        <!-- Voice Narration Bar -->
+        
+      </div>
+
+      
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast">
+    <i class="bi bi-check-circle-fill toast-icon" id="toast-icon"></i>
+    <span id="toast-message">Muvaffaqiyatli bajarildi!</span>
+  </div>
+
+  <!-- App Script -->
+    <!-- Three.js & 3D Cosmic Particle Engine -->
+  <script src="/js/three.min.js"></script>
+  <script src="/js/cosmic-3d.js?v=20260828_v1"></script>
+  <script src="/js/app.js?v=20260828_v23_modal_active_fix"></script>
+
+  <!-- =============== ADMIN LOGIN LOGIC =============== -->
+  <script>
+  (function () {
+    var ADMIN_EMAIL    = 'kichikalloma@gmail.com';
+    var ADMIN_PASSWORD = 'KichikAlloma9765100';
+    var SESSION_KEY    = 'ka_admin_auth';
+    var SESSION_TTL    = 8 * 60 * 60 * 1000; // 8 soat
+
+    var overlay  = document.getElementById('admin-login-overlay');
+    var errBox   = document.getElementById('login-error');
+    var errMsg   = document.getElementById('login-error-msg');
+    var submitBtn = document.getElementById('login-submit-btn');
+
+    function isAuthenticated() {
+      try {
+        var raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+        if (!raw) return false;
+        var data = JSON.parse(raw);
+        return data && data.auth === true && (Date.now() - data.ts) < SESSION_TTL;
+      } catch (e) { return false; }
+    }
+
+    function saveSession() {
+      var data = JSON.stringify({ auth: true, ts: Date.now() });
+      try { sessionStorage.setItem(SESSION_KEY, data); } catch (e) {}
+      try { localStorage.setItem(SESSION_KEY, data); } catch (e) {}
+    }
+
+    function showError(msg) {
+      errMsg.textContent = msg || "Email yoki parol noto'g'ri";
+      errBox.classList.add('show');
+    }
+
+    function hideError() {
+      errBox.classList.remove('show');
+    }
+
+    function grantAccess() {
+      overlay.classList.add('hidden');
+      setTimeout(function () { overlay.style.display = 'none'; }, 450);
+    }
+
+    /* Sessiya bor bo'lsa darhol o'tish */
+    if (isAuthenticated()) {
+      grantAccess();
+    }
+
+    /* Login form submit */
+    window.handleAdminLogin = function (e) {
+      e.preventDefault();
+      hideError();
+
+      var email    = (document.getElementById('login-email').value || '').trim().toLowerCase();
+      var password = (document.getElementById('login-password').value || '').trim();
+
+      if (!email) { showError('Email manzilini kiriting'); return; }
+      if (!password) { showError('Parolni kiriting'); return; }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Tekshirilmoqda…';
+
+      /* Kichik kechikish (UX uchun) */
+      setTimeout(function () {
+        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+          saveSession();
+          submitBtn.textContent = '✅ Kirish muvaffaqiyatli';
+          submitBtn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+          setTimeout(grantAccess, 600);
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Kirish';
+          showError("Email yoki parol noto'g'ri. Qayta urinib ko'ring.");
+          /* Parol kiritish maydonini tozalash */
+          document.getElementById('login-password').value = '';
+          document.getElementById('login-password').focus();
+        }
+      }, 500);
+    };
+
+    /* Logout funksiyasi */
+    window.handleAdminLogout = function () {
+      if (confirm("Haqiqatan ham admin paneldan chiqmoqchimisiz?")) {
+        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+        try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+        overlay.style.display = 'flex';
+        overlay.classList.remove('hidden');
+        document.getElementById('login-password').value = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Kirish';
+        submitBtn.style.background = '';
+      }
+    };
+  })();
+  </script>
+</body>
+</html>

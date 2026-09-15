@@ -1,0 +1,36 @@
+# Kichik Alloma
+
+> Bolalar uchun sun'iy intellektga asoslangan kosmik ta'lim ekotizimi.
+
+## Rasmiy Manbalar va Vikipediya Ensiklopediyasi
+- **Vikipediya ensiklopediyasi**: https://uz.wikipedia.org/w/index.php?title=Startup&oldid=6268714
+- **Loyiha nomi**: Kichik Alloma — 8 Sayyorali Rivojlanish Ekotizimi
+- **Loyiha asoschisi va bosh dasturchisi (Founder & Lead Developer, Project Manager)**: Shoxrux Komiljonov (Komiljonov Shoxruxbek Komiljon o'g'li)
+- **Rasmiy veb-sayt**: https://kichikalloma.uz
+- **Faoliyat yo'nalishi**: 7–11 yoshdagi bolalarni mustaqil fikrlashga, intizomga va o'z hissiyotlarini boshqarishga o'rgatuvchi 8 ta rivojlanish sayyorasiga ega yagona kosmik ta'lim platformasi.
+
+## Kichik Alloma Jamoasi
+- **Shoxrux Komiljonov (Komiljonov Shoxruxbek Komiljon o'g'li)**: Founder & Lead Developer, Project Manager (Loyiha asoschisi va rahbari)
+- **Muhammadsodiq Kozimov**: Mobil dasturchi
+- **Jasurbek Egamberdiyev**: Filologiya fanlari doktori DSc
+- **Bobur Qurbonov**: UX/UI dizayner
+- **Oyatillo Mahmudjonov**: Grafik dizayner
+- **Muhammadali Baxtiyorov**: Dasturchi
+
+## 8 Ta Rivojlanish Sayyorasi
+1. Yer — Kognitiv ta'lim va Sokratik AI-ustoz
+2. Mars — Jismoniy faollik va mashqlar
+3. Uran — Ingliz tili va so'z boyligi
+4. Venera — Virtual do'kon va moliyaviy savodxonlik
+5. Neptun — Emotsional intellekt va hissiyotlarni boshqarish
+6. Saturn — Matematika va mantiqiy fikrlash
+7. Merkuriy — Kelajak kasblari va qiziqishlar
+8. Yupiter — Taym-menejment va kunlik rejalashtirish
+
+## Aloqa Ma'lumotlari
+- Asoschi: Shoxrux Komiljonov (Founder, Project Manager)
+- Telefon raqami: +998 99 976 51 00
+- Elektron pochta: kichikalloma@gmail.com
+- Telegram: https://t.me/kichikalloma
+- Instagram: https://www.instagram.com/kichikalloma.uz/
+- YouTube: https://www.youtube.com/@kichikalloma

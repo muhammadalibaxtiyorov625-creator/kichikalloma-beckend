@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+*.sqlite-journal
+
+# Node
+node_modules
+website/node_modules
+dist
+website/dist
+
+# Environment & IDE
+.env
+.vscode
+.idea
+*.zip
+*.log
