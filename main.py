@@ -412,6 +412,79 @@ if os.path.exists(AUDIO_CACHE_DIR):
 if os.path.exists(os.path.join(PUBLIC_DIR, "audio")):
     app.mount("/audio", StaticFiles(directory=os.path.join(PUBLIC_DIR, "audio")), name="audio")
 
+# Legacy /img va /planets yo'llari uchun mos statik fayllarni xavfsiz taqdim etish
+@app.get("/img/{file_path:path}", include_in_schema=False)
+def serve_legacy_img(file_path: str):
+    fp = file_path.lower()
+    if "earth" in fp or "yer" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "earth.svg")
+    elif "mars" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "mars.svg")
+    elif "uran" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "cyan-rings.svg")
+    elif "vener" in fp or "venus" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "coral.svg")
+    elif "neptun" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "teal-moon.svg")
+    elif "saturn" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "saturn.svg")
+    elif "merkur" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "purple.svg")
+    elif "jupit" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "deep-blue.svg")
+    elif "team1" in fp or "member1" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member1.svg")
+    elif "team2" in fp or "member2" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member2.svg")
+    elif "team3" in fp or "member3" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member3.svg")
+    elif "team4" in fp or "member4" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member4.svg")
+    elif "team5" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member1.svg")
+    elif "team6" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "team", "member2.svg")
+    elif "hero" in fp:
+        target = os.path.join(PUBLIC_DIR, "hero-galaxy-bg.jpg")
+    elif "logo" in fp:
+        target = os.path.join(PUBLIC_DIR, "logo.png")
+    else:
+        direct = os.path.join(PUBLIC_DIR, file_path)
+        if os.path.exists(direct):
+            target = direct
+        else:
+            target = os.path.join(PUBLIC_DIR, "images", "planets", "earth.svg")
+
+    if os.path.exists(target):
+        media_type, _ = mimetypes.guess_type(target)
+        return FileResponse(target, media_type=media_type or "image/svg+xml")
+    raise HTTPException(status_code=404, detail="Rasm topilmadi")
+
+@app.get("/planets/{file_path:path}", include_in_schema=False)
+def serve_legacy_planets(file_path: str):
+    fp = file_path.lower()
+    if "mars" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "mars.svg")
+    elif "uran" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "cyan-rings.svg")
+    elif "venus" in fp or "vener" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "coral.svg")
+    elif "neptun" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "teal-moon.svg")
+    elif "saturn" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "saturn.svg")
+    elif "mercur" in fp or "merkur" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "purple.svg")
+    elif "jupiter" in fp or "jupit" in fp:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "deep-blue.svg")
+    else:
+        target = os.path.join(PUBLIC_DIR, "images", "planets", "earth.svg")
+
+    if os.path.exists(target):
+        media_type, _ = mimetypes.guess_type(target)
+        return FileResponse(target, media_type=media_type or "image/svg+xml")
+    raise HTTPException(status_code=404, detail="Rasm topilmadi")
+
 
 def is_admin_subdomain(request: Request) -> bool:
     """Tekshirish: so'rov admin subdomendan (khv.localhost, admin.localhost, khv.*, admin.*) kelganmi?"""
@@ -492,9 +565,43 @@ def sanitize_image_path(image_path: Optional[str]) -> str:
     if not image_path:
         return "/images/planets/earth.svg"
     clean = image_path.strip()
-    match = re.match(r'^https?://[^/]+(/images/.*)$', clean)
+    match = re.match(r'^https?://[^/]+(/.*)$', clean)
     if match:
-        return match.group(1)
+        clean = match.group(1)
+
+    # Legacy /img/ va /planets/ yo'llarini to'g'rilash
+    if clean.startswith("/img/") or clean.startswith("/planets/"):
+        fname = clean.split("/")[-1].lower()
+        if "earth" in fname or "yer" in fname:
+            return "/images/planets/earth.svg"
+        elif "mars" in fname:
+            return "/images/planets/mars.svg"
+        elif "uran" in fname:
+            return "/images/planets/cyan-rings.svg"
+        elif "vener" in fname or "venus" in fname:
+            return "/images/planets/coral.svg"
+        elif "neptun" in fname:
+            return "/images/planets/teal-moon.svg"
+        elif "saturn" in fname:
+            return "/images/planets/saturn.svg"
+        elif "merkur" in fname:
+            return "/images/planets/purple.svg"
+        elif "jupit" in fname:
+            return "/images/planets/deep-blue.svg"
+        elif "team1" in fname or "member1" in fname:
+            return "/images/team/member1.svg"
+        elif "team2" in fname or "member2" in fname:
+            return "/images/team/member2.svg"
+        elif "team3" in fname or "member3" in fname:
+            return "/images/team/member3.svg"
+        elif "team4" in fname or "member4" in fname:
+            return "/images/team/member4.svg"
+        elif "team5" in fname:
+            return "/images/team/member1.svg"
+        elif "team6" in fname:
+            return "/images/team/member2.svg"
+        else:
+            return "/images/planets/earth.svg"
     return clean
 
 
@@ -507,13 +614,8 @@ def to_full_image_url(image_path: Optional[str], request: Request) -> str:
         return image_path
         
     base_url = get_base_url(request)
-    clean_path = image_path.strip()
+    clean_path = sanitize_image_path(image_path)
     
-    # Agar avval localhost:3009 yoki boshqa eski domen bilan kelgan bo'lsa
-    match = re.match(r'^https?://[^/]+(/images/.*)$', clean_path)
-    if match:
-        clean_path = match.group(1)
-        
     # Agar tashqi internet havolasi bo'lsa
     if (clean_path.startswith("http://") or clean_path.startswith("https://")) and not clean_path.startswith(base_url):
         return clean_path
@@ -723,26 +825,49 @@ def format_planet_row(row, request: Request, lang: str = "uzb") -> dict:
 
     # Sayyora nomiga qarab standart fallback rasm
     PLANET_TITLE_TO_IMG = {
-        "kognitiv": "/planets/earth.png",
-        "jismoniy": "/planets/mars.png",
-        "nutq": "/planets/uran.png",
-        "ijtimoiy": "/planets/neptune.png",
-        "emotsional": "/planets/venus.png",
-        "axloqiy": "/planets/saturn.png",
-        "ijodkorlik": "/planets/jupiter.png",
-        "boshqarish": "/planets/mercury.png",
-        "quyosh": "/planets/sun.png",
-        "ai chat": "/planets/sun.png",
+        "yer": "/images/planets/earth.svg",
+        "earth": "/images/planets/earth.svg",
+        "kognitiv": "/images/planets/earth.svg",
+        "mars": "/images/planets/mars.svg",
+        "jismoniy": "/images/planets/mars.svg",
+        "uran": "/images/planets/cyan-rings.svg",
+        "nutq": "/images/planets/cyan-rings.svg",
+        "til": "/images/planets/cyan-rings.svg",
+        "venera": "/images/planets/coral.svg",
+        "venus": "/images/planets/coral.svg",
+        "do'kon": "/images/planets/coral.svg",
+        "dokon": "/images/planets/coral.svg",
+        "neptun": "/images/planets/teal-moon.svg",
+        "neptune": "/images/planets/teal-moon.svg",
+        "emotsional": "/images/planets/teal-moon.svg",
+        "hissiyot": "/images/planets/teal-moon.svg",
+        "saturn": "/images/planets/saturn.svg",
+        "axloqiy": "/images/planets/saturn.svg",
+        "matematika": "/images/planets/saturn.svg",
+        "mantiq": "/images/planets/saturn.svg",
+        "merkuriy": "/images/planets/purple.svg",
+        "mercury": "/images/planets/purple.svg",
+        "kasb": "/images/planets/purple.svg",
+        "yupiter": "/images/planets/deep-blue.svg",
+        "jupiter": "/images/planets/deep-blue.svg",
+        "boshqarish": "/images/planets/deep-blue.svg",
+        "ijodkorlik": "/images/planets/deep-blue.svg",
+        "quyosh": "/images/planets/earth.svg",
+        "sun": "/images/planets/earth.svg",
+        "ai chat": "/images/planets/earth.svg",
     }
     title_lower = (d.get("title") or "").lower()
-    fallback_img = "/planets/earth.png"
+    fallback_img = "/images/planets/earth.svg"
     for keyword, img_path in PLANET_TITLE_TO_IMG.items():
         if keyword in title_lower:
             fallback_img = img_path
             break
 
     # DB dagi rasm bo'lsa o'sha ishlatiladi, bo'lmasa fallback
-    final_img = raw_img if raw_img else fallback_img
+    if not raw_img or raw_img.startswith("/img/") or raw_img.startswith("/planets/"):
+        final_img = fallback_img
+    else:
+        final_img = raw_img
     d["image"] = to_full_image_url(final_img, request)
     
     # is_blocked va is_block
@@ -787,7 +912,10 @@ def format_team_row(row, request: Request, lang: str = "uzb") -> dict:
     tid = d.get("id") or 1
     fallback_img = f"/images/team/member{((tid - 1) % 4) + 1}.svg"
 
-    final_img = raw_img if raw_img else fallback_img
+    if not raw_img or raw_img.startswith("/img/") or raw_img.startswith("/team/"):
+        final_img = fallback_img
+    else:
+        final_img = raw_img
     d["image"] = to_full_image_url(final_img, request)
     desc = d.get("description") or ""
     d["description"] = translate_text_sync(desc, lang) if lang != "uzb" else desc

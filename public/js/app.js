@@ -283,24 +283,44 @@ function normalizeImageUrl(url) {
   if (url.startsWith('data:')) return url;
   
   // Agar boshqa host/localhost URL bilan kelgan bo'lsa, toza nisbiy yo'lga aylantiramiz
-  const match = url.match(/^https?:\/\/[^\/]+(\/images\/.*)$/);
+  const match = url.match(/^https?:\/\/[^\/]+(\/.*)$/);
   if (match) {
-    return match[1];
+    url = match[1];
+  }
+
+  // Legacy /img/ va /planets/ yo'llarini xavfsiz to'g'irlash
+  if (url.startsWith('/img/') || url.startsWith('/planets/')) {
+    const fn = url.toLowerCase();
+    if (fn.includes('earth') || fn.includes('yer')) return '/images/planets/earth.svg';
+    if (fn.includes('mars')) return '/images/planets/mars.svg';
+    if (fn.includes('uran')) return '/images/planets/cyan-rings.svg';
+    if (fn.includes('vener') || fn.includes('venus')) return '/images/planets/coral.svg';
+    if (fn.includes('neptun')) return '/images/planets/teal-moon.svg';
+    if (fn.includes('saturn')) return '/images/planets/saturn.svg';
+    if (fn.includes('merkur')) return '/images/planets/purple.svg';
+    if (fn.includes('jupit')) return '/images/planets/deep-blue.svg';
+    if (fn.includes('team1') || fn.includes('member1')) return '/images/team/member1.svg';
+    if (fn.includes('team2') || fn.includes('member2')) return '/images/team/member2.svg';
+    if (fn.includes('team3') || fn.includes('member3')) return '/images/team/member3.svg';
+    if (fn.includes('team4') || fn.includes('member4')) return '/images/team/member4.svg';
+    if (fn.includes('team5')) return '/images/team/member1.svg';
+    if (fn.includes('team6')) return '/images/team/member2.svg';
+    return '/images/planets/earth.svg';
   }
   return url;
 }
 
 function getPlanetFallback(title) {
   const t = (title || '').toLowerCase();
-  if (t.includes('kognitiv')) return '/images/planets/earth.svg';
-  if (t.includes('jismoniy')) return '/images/planets/mars.svg';
-  if (t.includes('nutq')) return '/images/planets/saturn.svg';
-  if (t.includes('ijtimoiy')) return '/images/planets/purple.svg';
-  if (t.includes('emotsional')) return '/images/planets/coral.svg';
-  if (t.includes('axloqiy')) return '/images/planets/cyan-rings.svg';
-  if (t.includes('ijodkorlik')) return '/images/planets/teal-moon.svg';
-  if (t.includes('boshqarish')) return '/images/planets/deep-blue.svg';
-  if (t.includes('quyosh')) return '/images/planets/earth.svg';
+  if (t.includes('yer') || t.includes('kognitiv') || t.includes('earth')) return '/images/planets/earth.svg';
+  if (t.includes('mars') || t.includes('jismoniy')) return '/images/planets/mars.svg';
+  if (t.includes('uran') || t.includes('nutq') || t.includes('til')) return '/images/planets/cyan-rings.svg';
+  if (t.includes('vener') || t.includes("do'kon") || t.includes('dokon')) return '/images/planets/coral.svg';
+  if (t.includes('neptun') || t.includes('emotsional') || t.includes('hissiyot')) return '/images/planets/teal-moon.svg';
+  if (t.includes('saturn') || t.includes('axloq') || t.includes('matematika') || t.includes('mantiq')) return '/images/planets/saturn.svg';
+  if (t.includes('merkur') || t.includes('kasb')) return '/images/planets/purple.svg';
+  if (t.includes('yupiter') || t.includes('boshqarish') || t.includes('ijodkorlik') || t.includes('reja')) return '/images/planets/deep-blue.svg';
+  if (t.includes('quyosh') || t.includes('sun')) return '/images/planets/earth.svg';
   return '/images/planets/earth.svg';
 }
 
@@ -896,10 +916,10 @@ function renderTeams() {
   const searchTerm = (document.getElementById('team-search')?.value || '').toLowerCase();
 
   const filtered = teamsList.filter(t => 
-    t.full_name.toLowerCase().includes(searchTerm) || 
-    t.first_name.toLowerCase().includes(searchTerm) || 
-    t.last_name.toLowerCase().includes(searchTerm) || 
-    t.role.toLowerCase().includes(searchTerm)
+    (t.full_name || '').toLowerCase().includes(searchTerm) || 
+    (t.first_name || '').toLowerCase().includes(searchTerm) || 
+    (t.last_name || '').toLowerCase().includes(searchTerm) || 
+    (t.role || '').toLowerCase().includes(searchTerm)
   );
 
   if (filtered.length === 0) {

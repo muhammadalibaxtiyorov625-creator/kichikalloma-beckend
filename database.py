@@ -28,6 +28,10 @@ def init_db():
             description TEXT,
             image TEXT DEFAULT '/images/planets/earth.svg',
             status TEXT DEFAULT 'active',
+            is_blocked INTEGER DEFAULT 0,
+            is_block INTEGER DEFAULT 0,
+            gradient TEXT DEFAULT NULL,
+            video TEXT DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -74,6 +78,18 @@ def init_db():
     team_cols = [c["name"] for c in cursor.fetchall()]
     if "description" not in team_cols:
         cursor.execute("ALTER TABLE teams ADD COLUMN description TEXT DEFAULT ''")
+
+    # Agar planets jadvalida qo'shimcha ustunlar bo'lmasa xavfsiz qo'shish
+    cursor.execute("PRAGMA table_info(planets)")
+    planet_cols = [c["name"] for c in cursor.fetchall()]
+    if "is_blocked" not in planet_cols:
+        cursor.execute("ALTER TABLE planets ADD COLUMN is_blocked INTEGER DEFAULT 0")
+    if "is_block" not in planet_cols:
+        cursor.execute("ALTER TABLE planets ADD COLUMN is_block INTEGER DEFAULT 0")
+    if "gradient" not in planet_cols:
+        cursor.execute("ALTER TABLE planets ADD COLUMN gradient TEXT DEFAULT NULL")
+    if "video" not in planet_cols:
+        cursor.execute("ALTER TABLE planets ADD COLUMN video TEXT DEFAULT NULL")
 
     # 5. Galereya jadvali (Gallery - Rasmlar to'plami)
     cursor.execute("""
@@ -200,14 +216,14 @@ def init_db():
     if not seeded_row:
         # 1. Boshlang'ich 8 ta rasmli sayyoralar
         initial_planets = [
-            ('Yer', 'Kognitiv ta\'lim — AI-ustoz bilan mustaqil fikrlash.', '/img/earth.png', 'active'),
-            ('Mars', 'Jismoniy faollik — Video asosida harakat va mashqlar.', '/img/mars.png', 'active'),
-            ('Uran', 'Ingliz tili — So\'z, talaffuz, test va mustahkamlash.', '/img/uran.png', 'active'),
-            ('Venera', 'Virtual do\'kon — Oltin tangalar orqali buyumlar.', '/img/venera.png', 'active'),
-            ('Neptun', 'Emotsional savodxonlik — Hissiyotlar daraxti va xotirjamlik.', '/img/neptun.png', 'active'),
-            ('Saturn', 'Matematika va mantiq — Bosqichli masalalar va testlar.', '/img/saturn.png', 'active'),
-            ('Merkuriy', 'Kelajak kasblari — Qiziqishlarni kashf etish va maqsad.', '/img/merkuriy.png', 'active'),
-            ('Yupiter', 'Taym-menejment — 20 daqiqa qoidasi va reja.', '/img/jupiter.png', 'active')
+            ('Yer', 'Kognitiv ta\'lim — AI-ustoz bilan mustaqil fikrlash.', '/images/planets/earth.svg', 'active'),
+            ('Mars', 'Jismoniy faollik — Video asosida harakat va mashqlar.', '/images/planets/mars.svg', 'active'),
+            ('Uran', 'Ingliz tili — So\'z, talaffuz, test va mustahkamlash.', '/images/planets/cyan-rings.svg', 'active'),
+            ('Venera', 'Virtual do\'kon — Oltin tangalar orqali buyumlar.', '/images/planets/coral.svg', 'active'),
+            ('Neptun', 'Emotsional savodxonlik — Hissiyotlar daraxti va xotirjamlik.', '/images/planets/teal-moon.svg', 'active'),
+            ('Saturn', 'Matematika va mantiq — Bosqichli masalalar va testlar.', '/images/planets/saturn.svg', 'active'),
+            ('Merkuriy', 'Kelajak kasblari — Qiziqishlarni kashf etish va maqsad.', '/images/planets/purple.svg', 'active'),
+            ('Yupiter', 'Taym-menejment — 20 daqiqa qoidasi va reja.', '/images/planets/deep-blue.svg', 'active')
         ]
         cursor.executemany(
             "INSERT INTO planets (title, description, image, status) VALUES (?, ?, ?, ?)",
@@ -240,12 +256,12 @@ def init_db():
 
         # 4. Boshlang'ich Jamoa a'zolari (Teams)
         initial_teams = [
-            ('Shoxrux', 'Komiljonov', 'Founder, Project Manager', '/img/team1.jpg'),
-            ('Muhammadsodiq', 'Kozimov', 'Mobil dasturchi', '/img/team2.jpg'),
-            ('Jasurbek', 'Egamberdiyev', 'Filologiya fanlari doktori DSc', '/img/team3.jpg'),
-            ('Bobur', 'Qurbonov', 'UX/UI dizayner', '/img/team4.jpg'),
-            ('Oyatillo', 'Mahmudjonov', 'Grafik dizayner', '/img/team5.jpg'),
-            ('Muhammadali', 'Baxtiyorov', 'Dasturchi', '/img/team6.jpg')
+            ('Shoxrux', 'Komiljonov', 'Founder, Project Manager', '/images/team/member1.svg'),
+            ('Muhammadsodiq', 'Kozimov', 'Mobil dasturchi', '/images/team/member2.svg'),
+            ('Jasurbek', 'Egamberdiyev', 'Filologiya fanlari doktori DSc', '/images/team/member3.svg'),
+            ('Bobur', 'Qurbonov', 'UX/UI dizayner', '/images/team/member4.svg'),
+            ('Oyatillo', 'Mahmudjonov', 'Grafik dizayner', '/images/team/member1.svg'),
+            ('Muhammadali', 'Baxtiyorov', 'Dasturchi', '/images/team/member2.svg')
         ]
         cursor.executemany(
             "INSERT INTO teams (first_name, last_name, role, image) VALUES (?, ?, ?, ?)",
@@ -265,6 +281,23 @@ def init_db():
         )
 
         cursor.execute("INSERT OR REPLACE INTO system_meta (key, value) VALUES ('seeded', '1')")
+
+    # Mavjud bazadagi eski /img/ yo'llarini yangi /images/ ga to'g'rilash
+    cursor.execute("UPDATE planets SET image = '/images/planets/earth.svg' WHERE image LIKE '%/img/earth%' OR image LIKE '%/planets/earth%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/mars.svg' WHERE image LIKE '%/img/mars%' OR image LIKE '%/planets/mars%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/cyan-rings.svg' WHERE image LIKE '%/img/uran%' OR image LIKE '%/planets/uran%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/coral.svg' WHERE image LIKE '%/img/venera%' OR image LIKE '%/planets/venus%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/teal-moon.svg' WHERE image LIKE '%/img/neptun%' OR image LIKE '%/planets/neptune%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/saturn.svg' WHERE image LIKE '%/img/saturn%' OR image LIKE '%/planets/saturn%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/purple.svg' WHERE image LIKE '%/img/merkuriy%' OR image LIKE '%/planets/mercury%'")
+    cursor.execute("UPDATE planets SET image = '/images/planets/deep-blue.svg' WHERE image LIKE '%/img/jupiter%' OR image LIKE '%/planets/jupiter%'")
+
+    cursor.execute("UPDATE teams SET image = '/images/team/member1.svg' WHERE image LIKE '%/img/team1%'")
+    cursor.execute("UPDATE teams SET image = '/images/team/member2.svg' WHERE image LIKE '%/img/team2%'")
+    cursor.execute("UPDATE teams SET image = '/images/team/member3.svg' WHERE image LIKE '%/img/team3%'")
+    cursor.execute("UPDATE teams SET image = '/images/team/member4.svg' WHERE image LIKE '%/img/team4%'")
+    cursor.execute("UPDATE teams SET image = '/images/team/member1.svg' WHERE image LIKE '%/img/team5%'")
+    cursor.execute("UPDATE teams SET image = '/images/team/member2.svg' WHERE image LIKE '%/img/team6%'")
 
     # 11. FAQ (Ko'p so'raladigan savollar) jadvali
     cursor.execute("""
