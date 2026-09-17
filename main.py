@@ -401,16 +401,22 @@ BASE_DIR = os.path.dirname(__file__)
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
 UPLOADS_DIR = os.path.join(PUBLIC_DIR, "images", "uploads")
 AUDIO_CACHE_DIR = os.path.join(PUBLIC_DIR, "audio_cache")
+VIDEOS_DIR = os.path.join(PUBLIC_DIR, "videos")
+LIBRARY_VIDEO_DIR = os.path.join(VIDEOS_DIR, "library")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
+os.makedirs(VIDEOS_DIR, exist_ok=True)
+os.makedirs(LIBRARY_VIDEO_DIR, exist_ok=True)
 
-# API Media va Yuklamalar (Images, Audio, Uploads)
+# API Media va Yuklamalar (Images, Audio, Videos, Uploads)
 if os.path.exists(os.path.join(PUBLIC_DIR, "images")):
     app.mount("/images", StaticFiles(directory=os.path.join(PUBLIC_DIR, "images")), name="images")
 if os.path.exists(AUDIO_CACHE_DIR):
     app.mount("/audio_cache", StaticFiles(directory=AUDIO_CACHE_DIR), name="audio_cache")
 if os.path.exists(os.path.join(PUBLIC_DIR, "audio")):
     app.mount("/audio", StaticFiles(directory=os.path.join(PUBLIC_DIR, "audio")), name="audio")
+if os.path.exists(VIDEOS_DIR):
+    app.mount("/videos", StaticFiles(directory=VIDEOS_DIR), name="videos")
 
 # Legacy /img va /planets yo'llari uchun mos statik fayllarni xavfsiz taqdim etish
 @app.get("/img/{file_path:path}", include_in_schema=False)
@@ -4310,12 +4316,16 @@ LIBRARY_UPLOAD_DIR = os.path.join(PUBLIC_DIR, "images", "library")
 os.makedirs(LIBRARY_UPLOAD_DIR, exist_ok=True)
 LIBRARY_AUDIO_DIR = os.path.join(PUBLIC_DIR, "audio", "library")
 os.makedirs(LIBRARY_AUDIO_DIR, exist_ok=True)
+LIBRARY_VIDEO_DIR = os.path.join(PUBLIC_DIR, "videos", "library")
+os.makedirs(LIBRARY_VIDEO_DIR, exist_ok=True)
 
 
 def format_book_dict(r: dict, request: Request, child_id: Optional[int] = None) -> dict:
     """Kitob ma'lumotlarini to'liq URL manzillari va farzand holati bilan formatlash"""
     cover = to_full_image_url(r.get("cover_image"), request)
     audio = to_full_image_url(r.get("audio_url"), request) if r.get("audio_url") else ""
+    raw_video = (r.get("video_url") or "").strip()
+    video = to_full_image_url(raw_video, request) if raw_video else ""
     
     is_fav = False
     prog_sec = 0
@@ -4348,6 +4358,7 @@ def format_book_dict(r: dict, request: Request, child_id: Optional[int] = None) 
         "description": r.get("description") or "",
         "content": r.get("content") or "",
         "audio_url": audio,
+        "video_url": video,
         "duration_seconds": r.get("duration_seconds") or 0,
         "duration_formatted": r.get("duration_formatted") or "12:52",
         "target_age": r.get("target_age") or "7-12 yosh",
@@ -4358,7 +4369,8 @@ def format_book_dict(r: dict, request: Request, child_id: Optional[int] = None) 
         "is_favorite": is_fav,
         "user_progress_seconds": prog_sec,
         "user_progress_formatted": prog_fmt,
-        "is_completed": is_comp
+        "is_completed": is_comp,
+        "status": r.get("status") or "active"
     }
 
 
@@ -4633,6 +4645,9 @@ def get_library_books(
     category_slug: Optional[str] = Query(None, description="Toifa kaliti (masalan 'tabiat', 'sarguzasht')"),
     section: Optional[str] = Query(None, description="Bo'lim nomi ('eng-sara', 'sarguzasht', 'ertaklar')"),
     is_featured: Optional[bool] = Query(None, description="Faqat eng sara kitoblar"),
+    status: Optional[str] = Query(None, description="Holat: 'active', 'inactive' yoki barchasi uchun 'all'"),
+    has_video: Optional[bool] = Query(None, description="Faqat videoli yoki videosiz kitoblar"),
+    has_audio: Optional[bool] = Query(None, description="Faqat audioli yoki audiosiz kitoblar"),
     child_id: Optional[int] = Query(None, description="Farzand IDsi"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -4648,9 +4663,25 @@ def get_library_books(
         SELECT b.*, c.name as category_name, c.slug as category_slug
         FROM library_books b
         LEFT JOIN library_categories c ON c.id = b.category_id
-        WHERE b.status = 'active'
+        WHERE 1=1
     """
     params = []
+
+    if status and status.lower() != "all":
+        sql += " AND b.status = ?"
+        params.append(status.lower())
+    elif not status:
+        sql += " AND b.status = 'active'"
+
+    if has_video is True:
+        sql += " AND b.video_url IS NOT NULL AND b.video_url != ''"
+    elif has_video is False:
+        sql += " AND (b.video_url IS NULL OR b.video_url = '')"
+
+    if has_audio is True:
+        sql += " AND b.audio_url IS NOT NULL AND b.audio_url != ''"
+    elif has_audio is False:
+        sql += " AND (b.audio_url IS NULL OR b.audio_url = '')"
 
     if q and q.strip():
         search_term = f"%{q.strip()}%"
@@ -4975,19 +5006,21 @@ def create_library_book(payload: CreateBookRequest, request: Request):
 
     clean_cover = sanitize_image_path(payload.cover_image or "/images/library/sariq_devni_minib.png")
     clean_audio = sanitize_image_path(payload.audio_url or "")
+    clean_video = sanitize_image_path(payload.video_url or "")
+    new_status = (payload.status or "active").strip()
 
     cursor.execute("""
         INSERT INTO library_books (
             category_id, title, author, cover_image, description, content,
-            audio_url, duration_seconds, duration_formatted, target_age,
+            audio_url, video_url, duration_seconds, duration_formatted, target_age,
             is_featured, section, listen_count, likes_count, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'active')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
     """, (
         payload.category_id, payload.title.strip(), payload.author.strip(),
         clean_cover, payload.description.strip(), (payload.content or "").strip(),
-        clean_audio, payload.duration_seconds or 0, payload.duration_formatted or "10:00",
+        clean_audio, clean_video, payload.duration_seconds or 0, payload.duration_formatted or "10:00",
         payload.target_age or "7-12 yosh", 1 if payload.is_featured else 0,
-        payload.section or "eng-sara"
+        payload.section or "eng-sara", new_status
     ))
     new_id = cursor.lastrowid
     conn.commit()
@@ -5026,6 +5059,7 @@ def update_library_book(book_id: int, payload: UpdateBookRequest, request: Reque
     new_desc = payload.description.strip() if payload.description is not None else d["description"]
     new_content = payload.content if payload.content is not None else d["content"]
     new_audio = sanitize_image_path(payload.audio_url) if payload.audio_url is not None else d["audio_url"]
+    new_video = sanitize_image_path(payload.video_url) if payload.video_url is not None else (d.get("video_url") or "")
     new_dur_sec = payload.duration_seconds if payload.duration_seconds is not None else d["duration_seconds"]
     new_dur_fmt = payload.duration_formatted if payload.duration_formatted is not None else d["duration_formatted"]
     new_age = payload.target_age if payload.target_age is not None else d["target_age"]
@@ -5036,12 +5070,12 @@ def update_library_book(book_id: int, payload: UpdateBookRequest, request: Reque
     cursor.execute("""
         UPDATE library_books
         SET category_id = ?, title = ?, author = ?, cover_image = ?, description = ?,
-            content = ?, audio_url = ?, duration_seconds = ?, duration_formatted = ?,
+            content = ?, audio_url = ?, video_url = ?, duration_seconds = ?, duration_formatted = ?,
             target_age = ?, is_featured = ?, section = ?, status = ?
         WHERE id = ?
     """, (
         new_cat, new_title, new_author, new_cover, new_desc,
-        new_content, new_audio, new_dur_sec, new_dur_fmt,
+        new_content, new_audio, new_video, new_dur_sec, new_dur_fmt,
         new_age, new_feat, new_sec, new_status, book_id
     ))
     conn.commit()
@@ -5170,6 +5204,169 @@ async def generate_book_audio_tts(book_id: int, request: Request):
         "audio_url": full_url,
         "url": full_url
     }
+
+
+# 7.15.15. VIDEO FAYL YUKLASH (/mobile/library/upload-video/ va /api/library/upload-video/)
+@app.post("/mobile/library/upload-video/", tags=["Web & Admin — Kutubxona Boshqaruvi"], summary="Admin: Kitob / Dars Video Faylini Yuklash (.mp4 / .webm / .mov / .mkv / .avi)")
+@app.post("/mobile/library/upload-video", include_in_schema=False)
+@app.post("/api/library/upload-video/", include_in_schema=False)
+@app.post("/api/library/upload-video", include_in_schema=False)
+async def upload_library_video(request: Request, file: UploadFile = File(...)):
+    allowed_exts = [".mp4", ".mov", ".webm", ".mkv", ".avi"]
+    ext = os.path.splitext(file.filename)[1].lower() or ".mp4"
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail=f"Faqat quyidagi video formatlar qabul qilinadi: {', '.join(allowed_exts)}")
+
+    unique_name = f"video_{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(LIBRARY_VIDEO_DIR, unique_name)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    relative_url = f"/videos/library/{unique_name}"
+    full_url = to_full_image_url(relative_url, request)
+
+    return {
+        "success": True,
+        "message": "Video muvaffaqiyatli yuklandi",
+        "url": full_url,
+        "video_url": full_url,
+        "path": relative_url,
+        "filename": file.filename
+    }
+
+
+# 7.15.16. VIDEO YUKLAB OLISH (DOWNLOAD VIDEO .MP4)
+@app.get("/api/library/books/{book_id}/download-video", tags=["Web & Admin — Kutubxona Boshqaruvi"], summary="Kitob videosini to'g'ridan-to'g'ri yuklab olish (Download MP4)")
+@app.get("/mobile/library/books/{book_id}/download-video", include_in_schema=False)
+def download_library_video(book_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, video_url FROM library_books WHERE id = ?", (book_id,))
+    book = cursor.fetchone()
+    conn.close()
+
+    if not book or not book["video_url"]:
+        raise HTTPException(status_code=404, detail="Ushbu kitobda video mavjud emas!")
+
+    raw_video = (book["video_url"] or "").strip()
+    if raw_video.startswith("http://") or raw_video.startswith("https://"):
+        # Agar localhost yoki o'zimizning server bo'lsa, faylga yo'naltirish
+        parsed = urlparse(raw_video)
+        raw_video = parsed.path
+
+    # Qidiriladigan lokal fayl manzillari
+    possible_paths = [
+        os.path.join(PUBLIC_DIR, raw_video.lstrip("/")),
+        os.path.join(BASE_DIR, raw_video.lstrip("/")),
+        os.path.join(PUBLIC_DIR, "videos", "library", os.path.basename(raw_video)),
+        os.path.join(PUBLIC_DIR, os.path.basename(raw_video))
+    ]
+
+    target_file = None
+    for p in possible_paths:
+        if os.path.isfile(p):
+            target_file = p
+            break
+
+    if not target_file:
+        # Fayl topilmasa, agar tashqi havola bo'lsa Redirect qilamiz
+        if book["video_url"].startswith("http"):
+            return RedirectResponse(url=book["video_url"])
+        raise HTTPException(status_code=404, detail="Video fayli serverda topilmadi!")
+
+    safe_title = re.sub(r'[^a-zA-Z0-9_-]', '_', book["title"]) or f"video_{book_id}"
+    ext = os.path.splitext(target_file)[1] or ".mp4"
+    download_name = f"{safe_title}{ext}"
+
+    return FileResponse(
+        target_file,
+        media_type="video/mp4",
+        filename=download_name,
+        headers={"Content-Disposition": f'attachment; filename="{download_name}"'}
+    )
+
+
+# 7.15.17. AUDIO YUKLAB OLISH (DOWNLOAD AUDIO .MP3)
+@app.get("/api/library/books/{book_id}/download-audio", tags=["Web & Admin — Kutubxona Boshqaruvi"], summary="Kitob audiosini to'g'ridan-to'g'ri yuklab olish (Download MP3)")
+@app.get("/mobile/library/books/{book_id}/download-audio", include_in_schema=False)
+def download_library_audio(book_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT title, audio_url FROM library_books WHERE id = ?", (book_id,))
+    book = cursor.fetchone()
+    conn.close()
+
+    if not book or not book["audio_url"]:
+        raise HTTPException(status_code=404, detail="Ushbu kitobda audio mavjud emas!")
+
+    raw_audio = (book["audio_url"] or "").strip()
+    if raw_audio.startswith("http://") or raw_audio.startswith("https://"):
+        parsed = urlparse(raw_audio)
+        raw_audio = parsed.path
+
+    possible_paths = [
+        os.path.join(PUBLIC_DIR, raw_audio.lstrip("/")),
+        os.path.join(BASE_DIR, raw_audio.lstrip("/")),
+        os.path.join(PUBLIC_DIR, "audio", "library", os.path.basename(raw_audio)),
+        os.path.join(PUBLIC_DIR, os.path.basename(raw_audio))
+    ]
+
+    target_file = None
+    for p in possible_paths:
+        if os.path.isfile(p):
+            target_file = p
+            break
+
+    if not target_file:
+        if book["audio_url"].startswith("http"):
+            return RedirectResponse(url=book["audio_url"])
+        raise HTTPException(status_code=404, detail="Audio fayli serverda topilmadi!")
+
+    safe_title = re.sub(r'[^a-zA-Z0-9_-]', '_', book["title"]) or f"audio_{book_id}"
+    ext = os.path.splitext(target_file)[1] or ".mp3"
+    download_name = f"{safe_title}{ext}"
+
+    return FileResponse(
+        target_file,
+        media_type="audio/mpeg",
+        filename=download_name,
+        headers={"Content-Disposition": f'attachment; filename="{download_name}"'}
+    )
+
+
+# 7.15.18. HAR QANDAY KUTUBXONA FAYLINI HAVOLA BO'YICHA YUKLAB OLISH
+@app.get("/api/library/download-file", tags=["Web & Admin — Kutubxona Boshqaruvi"], summary="Havola orqali ixtiyoriy media faylini to'g'ridan-to'g'ri yuklab olish (Download)")
+def download_any_library_file(file_url: str = Query(..., description="Yuklab olinadigan fayl havolasi")):
+    raw_path = file_url.strip()
+    if raw_path.startswith("http://") or raw_path.startswith("https://"):
+        parsed = urlparse(raw_path)
+        raw_path = parsed.path
+
+    possible_paths = [
+        os.path.join(PUBLIC_DIR, raw_path.lstrip("/")),
+        os.path.join(BASE_DIR, raw_path.lstrip("/"))
+    ]
+
+    target = None
+    for p in possible_paths:
+        if os.path.isfile(p):
+            target = p
+            break
+
+    if not target:
+        if file_url.startswith("http"):
+            return RedirectResponse(url=file_url)
+        raise HTTPException(status_code=404, detail="Fayl serverda topilmadi!")
+
+    filename = os.path.basename(target)
+    media_type, _ = mimetypes.guess_type(target)
+    return FileResponse(
+        target,
+        media_type=media_type or "application/octet-stream",
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 
 
@@ -7077,8 +7274,14 @@ async def admin_ai_chat(req: AiChatRequest, request: Request):
 @app.get("/{full_path:path}", include_in_schema=False)
 def serve_spa_or_static(full_path: str, request: Request):
     # API, docs, swagger, statik montajlar bo'lsa o'tkazib yuborish
-    if any(full_path.startswith(prefix) for prefix in ["api", "mobile", "docs", "openapi.json", "css", "js", "images", "img", "assets", "audio_cache", "planets"]):
+    if any(full_path.startswith(prefix) for prefix in ["api", "mobile", "docs", "openapi.json", "css", "js", "images", "img", "assets", "audio_cache", "planets", "videos", "audio"]):
         raise HTTPException(status_code=404, detail="Topilmadi")
+
+    # 0. Backend public dagi fayllarni qidirish (masalan: /video_2026-08-20_10-54-38.mp4, /space-bg.jpg)
+    public_root_file = os.path.join(PUBLIC_DIR, full_path)
+    if os.path.isfile(public_root_file) and not full_path.endswith(".html"):
+        media_type, _ = mimetypes.guess_type(public_root_file)
+        return FileResponse(public_root_file, media_type=media_type)
 
     # Agar admin subdomen bo'lsa -> Admin panel
     if is_admin_subdomain(request):

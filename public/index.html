@@ -14,9 +14,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   
   <!-- Custom Style -->
-  <link rel="stylesheet" href="/css/style.css?v=20260828_v23_modal_active_fix">
+  <link rel="stylesheet" href="css/style.css">
   <!-- 3D Cosmic Particle Styles -->
-  <link rel="stylesheet" href="/css/cosmic-3d.css?v=20260828_v1">
+  <link rel="stylesheet" href="css/cosmic-3d.css">
 </head>
 <body>
 
@@ -126,6 +126,11 @@
           <i class="bi bi-translate"></i>
           <span>Uran (So'zlar & Test)</span>
           <span class="nav-badge" id="uran-count-badge">10</span>
+        </button>
+        <button class="nav-btn" data-tab="library" onclick="switchTab('library')">
+          <i class="bi bi-collection-play-fill"></i>
+          <span>Kutubxona & Video</span>
+          <span class="nav-badge" id="library-count-badge">0</span>
         </button>
         <button class="nav-btn" data-tab="faqs" onclick="switchTab('faqs')">
           <i class="bi bi-question-circle-fill"></i>
@@ -251,6 +256,17 @@
                 <span class="stat-label">FAQ Savollar</span>
                 <h3 class="stat-value text-yellow" id="stat-total-faqs">0</h3>
                 <span class="stat-sub">Ko'p beriladigan savollar</span>
+              </div>
+            </div>
+
+            <div class="stat-card" onclick="switchTab('library')" style="cursor: pointer;">
+              <div class="stat-icon yellow-glow" style="background: rgba(250, 204, 21, 0.15); color: #facc15;">
+                <i class="bi bi-collection-play-fill"></i>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">Kutubxona & Videolar</span>
+                <h3 class="stat-value text-yellow" id="stat-total-library">0</h3>
+                <span class="stat-sub">Kitoblar va video darslar</span>
               </div>
             </div>
           </div>
@@ -763,6 +779,39 @@
                 </button>
               </form>
             </div>
+          </div>
+        </section>
+
+        <!-- 8. KUTUBXONA VA VIDEO DARSLAR (LIBRARY) TAB -->
+        <section id="tab-library" class="tab-content">
+          <div class="section-toolbar">
+            <div class="search-box">
+              <i class="bi bi-search"></i>
+              <input type="text" id="library-search" placeholder="Kitob/video nomi, muallif yoki mavzu bo'yicha qidirish..." oninput="renderLibraryBooks()">
+            </div>
+            <div class="toolbar-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <select id="library-cat-filter" class="form-control" style="width: auto; min-width: 155px; padding: 8px 12px; font-size: 13px;" onchange="renderLibraryBooks()">
+                <option value="">📚 Barcha Toifalar</option>
+              </select>
+              <select id="library-media-filter" class="form-control" style="width: auto; min-width: 145px; padding: 8px 12px; font-size: 13px;" onchange="renderLibraryBooks()">
+                <option value="all">🌟 Barcha Turlar</option>
+                <option value="video">🎬 Faqat Videoli</option>
+                <option value="audio">🎧 Faqat Audioli</option>
+              </select>
+              <select id="library-status-filter" class="form-control" style="width: auto; min-width: 135px; padding: 8px 12px; font-size: 13px;" onchange="renderLibraryBooks()">
+                <option value="all">🔘 Barcha Holatlar</option>
+                <option value="active" selected>● Faol (Active)</option>
+                <option value="inactive">○ Nofaol (Inactive)</option>
+              </select>
+              <button class="btn btn-yellow" onclick="openLibraryModal()">
+                <i class="bi bi-plus-circle-fill"></i> Yangi Kitob / Video Qo'shish
+              </button>
+            </div>
+          </div>
+
+          <!-- Library Grid -->
+          <div class="cards-grid" id="library-grid">
+            <div class="loading-state">Kutubxona kitoblari va videolari yuklanmoqda...</div>
           </div>
         </section>
       </div>
@@ -1377,6 +1426,250 @@
     </div>
   </div>
 
+  <!-- =========================================================================
+       LIBRARY BOOK & VIDEO CREATE/EDIT MODAL
+       ========================================================================= -->
+  <div id="library-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'library-modal')">
+    <div class="modal-card modal-lg" onclick="event.stopPropagation()" style="max-width: 820px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h3 id="library-modal-title">
+          <i class="bi bi-collection-play-fill text-yellow"></i>
+          <span>Yangi Kitob / Video Qo'shish</span>
+        </h3>
+        <button type="button" class="modal-close" onclick="closeLibraryModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form id="library-form" onsubmit="handleSaveLibraryBook(event)" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+        <input type="hidden" id="library-id">
+
+        <div class="modal-body" style="overflow-y: auto; padding-right: 12px;">
+          <!-- 1-Qator: Sarlavha va Muallif -->
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label for="library-title">Kitob / Video Nomi: <span class="required">*</span></label>
+              <input type="text" id="library-title" class="form-control" placeholder="Masalan: Sariq devni minib" required>
+            </div>
+            <div class="form-group">
+              <label for="library-author">Muallif / Manba: <span class="required">*</span></label>
+              <input type="text" id="library-author" class="form-control" placeholder="Masalan: Xudoyberdi To'xtaboyev" required>
+            </div>
+          </div>
+
+          <!-- 2-Qator: Kategoriya, Bo'lim va Yosh -->
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label for="library-category-id">Kategoriya / Toifa: <span class="required">*</span></label>
+              <select id="library-category-id" class="form-control" required>
+                <option value="">Yuklanmoqda...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="library-section">Ilova Bo'limi:</label>
+              <select id="library-section" class="form-control">
+                <option value="eng-sara" selected>⭐ Eng sara</option>
+                <option value="sarguzasht">🧭 Sarguzasht</option>
+                <option value="ertaklar">✨ Ertaklar</option>
+                <option value="tabiat">🌿 Tabiat & Hayvonlar</option>
+                <option value="fan">🚀 Fan & Bilim</option>
+                <option value="yangi">🆕 Yangi qo'shilganlar</option>
+                <option value="tavsiya">💡 Tavsiya etiladi</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="library-target-age">Yosh Toifasi:</label>
+              <input type="text" id="library-target-age" class="form-control" value="7-12 yosh" placeholder="Masalan: 5-8 yosh">
+            </div>
+          </div>
+
+          <!-- 3-Qator: Davomiylik, Holat va Featured -->
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; align-items: center;">
+            <div class="form-group">
+              <label for="library-duration-formatted">Davomiyligi (MM:SS):</label>
+              <input type="text" id="library-duration-formatted" class="form-control" value="10:00" placeholder="12:52" oninput="handleDurationFormattedChange(this.value)">
+            </div>
+            <div class="form-group">
+              <label for="library-duration-seconds">Soniya (Seconds):</label>
+              <input type="number" id="library-duration-seconds" class="form-control" value="600" placeholder="600">
+            </div>
+            <div class="form-group">
+              <label for="library-status">Holati:</label>
+              <select id="library-status" class="form-control">
+                <option value="active" selected>● Faol (Active)</option>
+                <option value="inactive">○ Nofaol (Inactive)</option>
+              </select>
+            </div>
+            <div class="form-group" style="padding-top: 20px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="library-is-featured" style="width: 18px; height: 18px; accent-color: var(--yellow-primary);">
+                <span style="font-size: 13px; font-weight: 700; color: var(--yellow-primary);">⭐ Eng sara</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 4-Qator: Muqova Rasmi (Cover Image) -->
+          <div class="media-section-card" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+            <label style="font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: #fff;">
+              <i class="bi bi-image-fill text-yellow"></i> Muqova Rasmi (Cover Image): <span class="required">*</span>
+            </label>
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+              <input type="text" id="library-cover-url" class="form-control" placeholder="/images/library/sariq_devni_minib.png yoki URL" required oninput="updateLibraryCoverPreview(this.value)">
+              <button type="button" class="btn btn-secondary" onclick="document.getElementById('library-cover-file').click()" title="Kompyuterdan rasm yuklash" style="white-space: nowrap;">
+                <i class="bi bi-upload"></i> Rasm Yuklash
+              </button>
+              <input type="file" id="library-cover-file" accept="image/*" style="display: none;" onchange="handleLibraryCoverUpload(event)">
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 70px; height: 70px; border-radius: 8px; overflow: hidden; background: #000; border: 1px solid rgba(250,204,21,0.3); flex-shrink: 0;">
+                <img id="library-cover-preview" src="/images/library/sariq_devni_minib.png" alt="Cover" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/images/library/sariq_devni_minib.png'">
+              </div>
+              <span id="library-cover-name" style="font-size: 12px; color: var(--text-muted); word-break: break-all;">/images/library/sariq_devni_minib.png</span>
+            </div>
+          </div>
+
+          <!-- 5-Qator: VIDEO BO'LIMI (Video Joylashtirish, Yuklash va Pleyer) -->
+          <div class="media-section-card" style="background: rgba(250, 204, 21, 0.04); border: 1px solid rgba(250, 204, 21, 0.25); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label style="font-weight: 800; display: flex; align-items: center; gap: 6px; margin: 0; color: var(--yellow-primary); font-size: 14px;">
+                <i class="bi bi-film"></i> Video Dars / Video Ertak (.mp4, .webm, .mov):
+              </label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="clearLibraryVideo()" title="Videoni tozalash" style="padding: 3px 10px; font-size: 11px;">
+                  <i class="bi bi-x-circle"></i> Tozalash
+                </button>
+                <button type="button" class="btn btn-sm btn-yellow" onclick="testPlayLibraryFormVideo()" title="Videoni sinab ko'rish" style="padding: 3px 10px; font-size: 11px;">
+                  <i class="bi bi-play-circle"></i> Sinab ko'rish
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+              <input type="text" id="library-video-url" class="form-control" placeholder="/videos/library/video.mp4 yoki tashqi URL" oninput="updateLibraryVideoPreview(this.value)">
+              <button type="button" class="btn btn-yellow" onclick="document.getElementById('library-video-file').click()" title="Kompyuterdan video yuklash" style="white-space: nowrap;">
+                <i class="bi bi-cloud-arrow-up-fill"></i> Video Yuklash
+              </button>
+              <input type="file" id="library-video-file" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" style="display: none;" onchange="handleLibraryVideoUpload(event)">
+            </div>
+
+            <!-- Video Preview Box -->
+            <div id="library-video-preview-wrap" style="display: none; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid rgba(250,204,21,0.2); margin-top: 8px; position: relative;">
+              <video id="library-video-preview-player" controls playsinline style="width: 100%; max-height: 200px; display: block;"></video>
+              <div style="padding: 8px 12px; background: rgba(0,0,0,0.8); display: flex; justify-content: space-between; align-items: center;">
+                <span id="library-video-preview-info" style="font-size: 12px; color: var(--text-muted);"><i class="bi bi-check-circle text-success"></i> Video yuklangan</span>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="downloadCurrentInputVideo()" style="padding: 2px 8px; font-size: 11px;">
+                  <i class="bi bi-download"></i> Yuklab Olish
+                </button>
+              </div>
+            </div>
+            <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
+              💡 Maslahat: Video yuklangandan so'ng mobil ilovada hamda admin panelda to'g'ridan-to'g'ri ko'rish va yuklab olish mumkin bo'ladi.
+            </small>
+          </div>
+
+          <!-- 6-Qator: AUDIO BO'LIMI (Audio Fayl, TTS va Pleyer) -->
+          <div class="media-section-card" style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label style="font-weight: 800; display: flex; align-items: center; gap: 6px; margin: 0; color: #818cf8; font-size: 14px;">
+                <i class="bi bi-headphones"></i> Audio Ertak / Ovozli Kitob (.mp3):
+              </label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="clearLibraryAudio()" title="Audioni tozalash" style="padding: 3px 10px; font-size: 11px;">
+                  <i class="bi bi-x-circle"></i> Tozalash
+                </button>
+                <button type="button" class="btn btn-sm" id="library-tts-gen-btn" onclick="handleGenerateLibraryAudioTTS()" style="background: rgba(99,102,241,0.25); color: #818cf8; border: 1px solid rgba(99,102,241,0.4); padding: 3px 10px; font-size: 11px;" title="Matndan o'zbekcha audio generatsiya qilish">
+                  <i class="bi bi-stars"></i> Matndan AI Ovoz
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+              <input type="text" id="library-audio-url" class="form-control" placeholder="/audio/library/sariq_devni_minib.mp3 yoki URL" oninput="updateLibraryAudioPreview(this.value)">
+              <button type="button" class="btn btn-secondary" onclick="document.getElementById('library-audio-file').click()" title="Kompyuterdan audio yuklash" style="white-space: nowrap;">
+                <i class="bi bi-upload"></i> Audio Yuklash
+              </button>
+              <input type="file" id="library-audio-file" accept="audio/mp3,audio/wav,audio/m4a,audio/*" style="display: none;" onchange="handleLibraryAudioUpload(event)">
+            </div>
+
+            <div id="library-audio-preview-wrap" style="display: none; margin-top: 8px;">
+              <audio id="library-audio-preview-player" controls style="width: 100%; height: 38px;"></audio>
+            </div>
+          </div>
+
+          <!-- 7-Qator: Qisqacha Tavsif -->
+          <div class="form-group">
+            <label for="library-desc">Qisqacha Tavsif (Annotatsiya): <span class="required">*</span></label>
+            <textarea id="library-desc" class="form-control" rows="3" placeholder="Kitob yoki video mazmuni haqida qisqacha ma'lumot kiriting..." required></textarea>
+          </div>
+
+          <!-- 8-Qator: Kitob Matni (Content) -->
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="library-content">Kitobning To'liq Matni / Ssenariysi:</label>
+            <textarea id="library-content" class="form-control" rows="5" placeholder="Kitobning 1-bobi yoki ertakning to'liq matni (AI ushbu matn orqali ham audio generatsiya qilishi mumkin)..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding: 16px 20px;">
+          <button type="button" id="library-delete-btn" class="btn btn-danger" style="display: none;" onclick="handleDeleteCurrentLibraryBookFromModal()">
+            <i class="bi bi-trash-fill"></i> Kitobni O'chirish
+          </button>
+          <div style="display: flex; gap: 10px; margin-left: auto;">
+            <button type="button" class="btn btn-secondary" onclick="closeLibraryModal()">Bekor qilish</button>
+            <button type="submit" class="btn btn-yellow" id="save-library-btn">
+              <i class="bi bi-check2-circle"></i> Saqlash
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- =========================================================================
+       LIBRARY VIDEO PLAYER & DOWNLOAD MODAL
+       ========================================================================= -->
+  <div id="library-video-modal" class="modal-overlay" onclick="handleOverlayClick(event, 'library-video-modal')">
+    <div class="modal-card modal-lg" onclick="event.stopPropagation()" style="max-width: 860px; background: #0e1015; border: 1px solid rgba(250,204,21,0.35); box-shadow: 0 25px 60px rgba(0,0,0,0.85);">
+      <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 34px; height: 34px; border-radius: 8px; background: rgba(250,204,21,0.15); color: #facc15; display: inline-flex; align-items: center; justify-content: center; font-size: 18px;">
+            <i class="bi bi-play-btn-fill"></i>
+          </span>
+          <div>
+            <h3 id="library-video-modal-title" style="font-size: 16px; margin: 0; color: #fff;">Video Dars</h3>
+            <p id="library-video-modal-sub" style="font-size: 12px; margin: 0; color: var(--text-muted);">Kutubxona videoni ko'rish va yuklab olish</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeLibraryVideoModal()" title="Yopish (Esc)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 16px 20px;">
+        <!-- Cinema Screen Video Player -->
+        <div style="background: #000; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+          <video id="library-modal-video-player" controls autoplay playsinline style="width: 100%; max-height: 480px; display: block; outline: none;"></video>
+        </div>
+
+        <!-- Video Info & Download Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+          <div id="library-video-modal-info" style="font-size: 13px; color: var(--text-muted);">
+            <i class="bi bi-info-circle text-yellow"></i> <span id="library-video-modal-filename">video.mp4</span>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button type="button" class="btn btn-yellow" id="library-video-modal-download-btn" onclick="downloadCurrentModalVideo()" style="font-weight: 800; padding: 10px 20px;">
+              <i class="bi bi-cloud-arrow-down-fill"></i> Videoni Yuklab Olish (.mp4)
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeLibraryVideoModal()">
+              Yopish
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   
   <!-- =========================================================================
        3D COSMIC PARTICLE UNIVERSE MODAL (Three.js WebGL Engine)
@@ -1439,9 +1732,9 @@
 
   <!-- App Script -->
     <!-- Three.js & 3D Cosmic Particle Engine -->
-  <script src="/js/three.min.js"></script>
-  <script src="/js/cosmic-3d.js?v=20260828_v1"></script>
-  <script src="/js/app.js?v=20260828_v23_modal_active_fix"></script>
+  <script src="js/three.min.js"></script>
+  <script src="js/cosmic-3d.js"></script>
+  <script src="js/app.js"></script>
 
   <!-- =============== ADMIN LOGIN LOGIC =============== -->
   <script>

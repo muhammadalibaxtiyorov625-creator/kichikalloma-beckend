@@ -754,9 +754,11 @@ class LibraryBookItemResponse(BaseModel):
     is_featured: bool = Field(True, example=True)
     section: str = Field("sarguzasht", example="sarguzasht")
     audio_url: str = Field(..., example="http://127.0.0.1:3000/audio/library/sariq_devni_minib.mp3")
+    video_url: Optional[str] = Field("", example="http://127.0.0.1:3000/videos/library/video.mp4")
     listen_count: int = Field(1280, example=1280)
     likes_count: int = Field(342, example=342)
     is_favorite: bool = Field(False, example=False)
+    status: Optional[str] = Field("active", example="active")
 
 
 class LibraryBookDetailResponse(BaseModel):
@@ -771,6 +773,7 @@ class LibraryBookDetailResponse(BaseModel):
     description: str = Field(..., example="Qissaning bosh qahramoni Hoshimjon...")
     content: Optional[str] = Field("", example="1-bob. Sehrli shlyapa...")
     audio_url: str = Field(..., example="http://127.0.0.1:3000/audio/library/sariq_devni_minib.mp3")
+    video_url: Optional[str] = Field("", example="http://127.0.0.1:3000/videos/library/video.mp4")
     duration_seconds: int = Field(772, example=772)
     duration_formatted: str = Field("12:52", example="12:52")
     target_age: str = Field("7-12 yosh", example="7-12 yosh")
@@ -782,6 +785,7 @@ class LibraryBookDetailResponse(BaseModel):
     user_progress_seconds: int = Field(0, example=172)
     user_progress_formatted: str = Field("00:00", example="02:52")
     is_completed: bool = Field(False, example=False)
+    status: Optional[str] = Field("active", example="active")
 
 
 class LibraryPlayerResponse(BaseModel):
@@ -790,6 +794,7 @@ class LibraryPlayerResponse(BaseModel):
     author: str = Field(..., example="Xudoyberdi To'xtaboyev")
     cover_image: str = Field(..., example="http://127.0.0.1:3000/images/library/sariq_devni_minib.png")
     audio_url: str = Field(..., example="http://127.0.0.1:3000/audio/library/sariq_devni_minib.mp3")
+    video_url: Optional[str] = Field("", example="http://127.0.0.1:3000/videos/library/video.mp4")
     duration_seconds: int = Field(772, example=772)
     duration_formatted: str = Field("12:52", example="12:52")
     progress_seconds: int = Field(172, example=172)
@@ -837,11 +842,13 @@ class CreateBookRequest(BaseModel):
     description: str = Field(..., example="Qiziqarli ertak")
     content: Optional[str] = Field("", example="Bir bor ekan...")
     audio_url: Optional[str] = Field("", example="/audio/library/yangi.mp3")
+    video_url: Optional[str] = Field("", example="/videos/library/yangi.mp4")
     duration_seconds: Optional[int] = Field(0, example=300)
     duration_formatted: Optional[str] = Field("05:00", example="05:00")
     target_age: Optional[str] = Field("5-10 yosh", example="5-10 yosh")
     is_featured: Optional[bool] = Field(False, example=False)
     section: Optional[str] = Field("yangi", example="yangi")
+    status: Optional[str] = Field("active", example="active")
 
 
 class UpdateBookRequest(BaseModel):
@@ -852,6 +859,7 @@ class UpdateBookRequest(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = None
     audio_url: Optional[str] = None
+    video_url: Optional[str] = None
     duration_seconds: Optional[int] = None
     duration_formatted: Optional[str] = None
     target_age: Optional[str] = None

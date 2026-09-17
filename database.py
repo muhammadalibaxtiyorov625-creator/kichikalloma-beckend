@@ -758,6 +758,7 @@ def init_db():
             description TEXT NOT NULL,
             content TEXT DEFAULT '',
             audio_url TEXT DEFAULT '',
+            video_url TEXT DEFAULT '',
             duration_seconds INTEGER DEFAULT 0,
             duration_formatted TEXT DEFAULT '12:52',
             target_age TEXT DEFAULT '7-12 yosh',
@@ -771,6 +772,12 @@ def init_db():
             FOREIGN KEY (category_id) REFERENCES library_categories (id) ON DELETE CASCADE
         )
     """)
+
+    # library_books jadvalida video_url ustuni mavjudligini tekshirish va xavfsiz qo'shish
+    cursor.execute("PRAGMA table_info(library_books)")
+    lib_book_cols = [c["name"] for c in cursor.fetchall()]
+    if "video_url" not in lib_book_cols:
+        cursor.execute("ALTER TABLE library_books ADD COLUMN video_url TEXT DEFAULT ''")
 
     # 23. Farzandning Tinglash / O'qish Progressi (Library Book Progress)
     cursor.execute("""

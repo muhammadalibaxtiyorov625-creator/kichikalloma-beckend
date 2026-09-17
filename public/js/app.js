@@ -1,3 +1,48 @@
+// ==========================================================================
+// STANDALONE ADMIN PANEL API ROUTER & CONFIGURATION
+// ==========================================================================
+const API_BASE_URL = (
+  (typeof window !== 'undefined' && window.API_BASE_URL) ||
+  (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE_URL')) ||
+  ((typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ? 'http://127.0.0.1:3000' : 'https://api.kichikalloma.uz')
+).replace(/\/+$/, '');
+
+window.API_BASE_URL = API_BASE_URL;
+
+window.getApiBaseUrl = function () {
+  return API_BASE_URL;
+};
+
+window.toFullMediaUrl = function (url) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  if (url.includes('localhost:') || url.includes('127.0.0.1:')) {
+    url = url.replace(/^https?:\/\/[^\/]+/, API_BASE_URL);
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return API_BASE_URL + url;
+  return API_BASE_URL + '/' + url;
+};
+
+// Global fetch interceptor: forwards relative /api/ and /mobile/ calls to API_BASE_URL
+(function () {
+  const _origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    if (typeof input === 'string') {
+      if (input.startsWith('/api/') || input.startsWith('/mobile/')) {
+        input = API_BASE_URL + input;
+      }
+    } else if (input && typeof input.url === 'string') {
+      if (input.url.startsWith('/api/') || input.url.startsWith('/mobile/')) {
+        try {
+          input = new Request(API_BASE_URL + input.url, input);
+        } catch (e) {}
+      }
+    }
+    return _origFetch.call(this, input, init);
+  };
+})();
+
 // Global state
 let currentTab = 'dashboard';
 let planetsList = [];
@@ -5,6 +50,11 @@ let amenitiesList = [];
 let teamsList = [];
 let galleryList = [];
 let messagesList = [];
+let libraryList = [];
+let libraryCategoriesList = [];
+let currentModalVideoUrl = '';
+let currentModalVideoTitle = '';
+let currentModalBookId = null;
 let currentOpenCatId = null;
 let currentOpenCatName = '';
 let currentCatDetailData = null;
@@ -100,6 +150,7 @@ function switchTab(tabId) {
     'messages': { title: 'Kelgan Xabarlar', subtitle: 'Mijozlar tomonidan yuborilgan so\'rov va murojaatlar' },
     'faqs': { title: 'Ko\'p So\'raladigan Savollar (FAQ)', subtitle: `Mobil ilova va vebsayt uchun tez-tez beriladigan savol-javoblarni boshqarish` },
     'uran': { title: 'Uran / Nutq va Til Sayyorasi (So\'zlar va Testlar)', subtitle: 'Mobil ilova uchun inglizcha-o\'zbekcha lug\'at kategoriyalari, so\'zlar va 4 ta variantli testlar' },
+    'library': { title: 'Kutubxona & Video Darslar (Library)', subtitle: 'Kutubxona kitoblari, ertaklar, audio va video darslarni to\'liq boshqarish va yuklab olish' },
     'ai': { title: 'Alloma AI Ta\'lim Yordamchisi', subtitle: 'Google Gemini 3.6 Flash asosidagi ta\'limiy va pedagogik AI' }
   };
 
@@ -113,6 +164,9 @@ function switchTab(tabId) {
     fetchFaqs();
   } else if (tabId === 'uran') {
     fetchUranCategories();
+  } else if (tabId === 'library') {
+    fetchLibraryCategories();
+    fetchLibraryBooks();
   }
 
   // Close mobile sidebar if open
@@ -147,6 +201,8 @@ function setupKeyboardShortcuts() {
       closeTeamModal();
       closeGalleryModal();
       closeFaqModal();
+      closeLibraryModal();
+      closeLibraryVideoModal();
       closeSidebar();
     }
   });
@@ -162,6 +218,8 @@ function handleOverlayClick(event, modalId) {
     if (modalId === 'faq-modal') closeFaqModal();
     if (modalId === 'uran-word-modal') closeUranWordModal();
     if (modalId === 'uran-words-modal') closeUranModal();
+    if (modalId === 'library-modal') closeLibraryModal();
+    if (modalId === 'library-video-modal') closeLibraryVideoModal();
   }
 }
 
@@ -179,7 +237,9 @@ async function loadAllData() {
     fetchMessages(),
     fetchFaqs(),
     fetchUranCategories(),
-    fetchUranWords()
+    fetchUranWords(),
+    fetchLibraryCategories(),
+    fetchLibraryBooks()
   ]);
   syncAllCounts();
   renderDashboard();
@@ -229,6 +289,12 @@ function syncAllCounts() {
 
   const statUranTests = document.getElementById('stat-uran-tests-total');
   if (statUranTests) statUranTests.innerText = `${uranWordsList.length} ta`;
+
+  // Kutubxona & Video
+  const libraryBadge = document.getElementById('library-count-badge');
+  const libraryStat = document.getElementById('stat-total-library');
+  if (libraryBadge) libraryBadge.innerText = libraryList.length;
+  if (libraryStat) libraryStat.innerText = libraryList.length;
 
   // Xabarlar
   const messagesStat = document.getElementById('stat-total-messages');
@@ -282,45 +348,35 @@ function normalizeImageUrl(url) {
   if (!url) return '/images/planets/earth.svg';
   if (url.startsWith('data:')) return url;
   
-  // Agar boshqa host/localhost URL bilan kelgan bo'lsa, toza nisbiy yo'lga aylantiramiz
-  const match = url.match(/^https?:\/\/[^\/]+(\/.*)$/);
-  if (match) {
-    url = match[1];
+  // Agar localhost URL bo'lsa, API_BASE_URL ga almashtirish
+  if (url.includes('localhost:') || url.includes('127.0.0.1:')) {
+    url = url.replace(/^https?:\/\/[^\/]+/, API_BASE_URL);
   }
 
-  // Legacy /img/ va /planets/ yo'llarini xavfsiz to'g'irlash
-  if (url.startsWith('/img/') || url.startsWith('/planets/')) {
-    const fn = url.toLowerCase();
-    if (fn.includes('earth') || fn.includes('yer')) return '/images/planets/earth.svg';
-    if (fn.includes('mars')) return '/images/planets/mars.svg';
-    if (fn.includes('uran')) return '/images/planets/cyan-rings.svg';
-    if (fn.includes('vener') || fn.includes('venus')) return '/images/planets/coral.svg';
-    if (fn.includes('neptun')) return '/images/planets/teal-moon.svg';
-    if (fn.includes('saturn')) return '/images/planets/saturn.svg';
-    if (fn.includes('merkur')) return '/images/planets/purple.svg';
-    if (fn.includes('jupit')) return '/images/planets/deep-blue.svg';
-    if (fn.includes('team1') || fn.includes('member1')) return '/images/team/member1.svg';
-    if (fn.includes('team2') || fn.includes('member2')) return '/images/team/member2.svg';
-    if (fn.includes('team3') || fn.includes('member3')) return '/images/team/member3.svg';
-    if (fn.includes('team4') || fn.includes('member4')) return '/images/team/member4.svg';
-    if (fn.includes('team5')) return '/images/team/member1.svg';
-    if (fn.includes('team6')) return '/images/team/member2.svg';
-    return '/images/planets/earth.svg';
+  // Agar to'liq URL bo'lsa (https:// yoki http://), uni saqlab qolamiz
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
   }
+
+  // Agar uploads katalogi bo'lsa, uni to'liq API_BASE_URL orqali yuklaymiz
+  if (url.startsWith('/images/uploads/') || url.startsWith('images/uploads/') || url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+    return window.toFullMediaUrl(url);
+  }
+
   return url;
 }
 
 function getPlanetFallback(title) {
   const t = (title || '').toLowerCase();
-  if (t.includes('yer') || t.includes('kognitiv') || t.includes('earth')) return '/images/planets/earth.svg';
-  if (t.includes('mars') || t.includes('jismoniy')) return '/images/planets/mars.svg';
-  if (t.includes('uran') || t.includes('nutq') || t.includes('til')) return '/images/planets/cyan-rings.svg';
-  if (t.includes('vener') || t.includes("do'kon") || t.includes('dokon')) return '/images/planets/coral.svg';
-  if (t.includes('neptun') || t.includes('emotsional') || t.includes('hissiyot')) return '/images/planets/teal-moon.svg';
-  if (t.includes('saturn') || t.includes('axloq') || t.includes('matematika') || t.includes('mantiq')) return '/images/planets/saturn.svg';
-  if (t.includes('merkur') || t.includes('kasb')) return '/images/planets/purple.svg';
-  if (t.includes('yupiter') || t.includes('boshqarish') || t.includes('ijodkorlik') || t.includes('reja')) return '/images/planets/deep-blue.svg';
-  if (t.includes('quyosh') || t.includes('sun')) return '/images/planets/earth.svg';
+  if (t.includes('kognitiv')) return '/images/planets/earth.svg';
+  if (t.includes('jismoniy')) return '/images/planets/mars.svg';
+  if (t.includes('nutq')) return '/images/planets/saturn.svg';
+  if (t.includes('ijtimoiy')) return '/images/planets/purple.svg';
+  if (t.includes('emotsional')) return '/images/planets/coral.svg';
+  if (t.includes('axloqiy')) return '/images/planets/cyan-rings.svg';
+  if (t.includes('ijodkorlik')) return '/images/planets/teal-moon.svg';
+  if (t.includes('boshqarish')) return '/images/planets/deep-blue.svg';
+  if (t.includes('quyosh')) return '/images/planets/earth.svg';
   return '/images/planets/earth.svg';
 }
 
@@ -668,7 +724,7 @@ function updatePlanetImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('planet-preview-img');
   const previewName = document.getElementById('planet-preview-name');
   
-  if (previewImg) previewImg.src = imgSrc;
+  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
   if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
 }
 
@@ -916,10 +972,10 @@ function renderTeams() {
   const searchTerm = (document.getElementById('team-search')?.value || '').toLowerCase();
 
   const filtered = teamsList.filter(t => 
-    (t.full_name || '').toLowerCase().includes(searchTerm) || 
-    (t.first_name || '').toLowerCase().includes(searchTerm) || 
-    (t.last_name || '').toLowerCase().includes(searchTerm) || 
-    (t.role || '').toLowerCase().includes(searchTerm)
+    t.full_name.toLowerCase().includes(searchTerm) || 
+    t.first_name.toLowerCase().includes(searchTerm) || 
+    t.last_name.toLowerCase().includes(searchTerm) || 
+    t.role.toLowerCase().includes(searchTerm)
   );
 
   if (filtered.length === 0) {
@@ -1025,7 +1081,7 @@ function updateTeamImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('team-preview-img');
   const previewName = document.getElementById('team-preview-name');
   
-  if (previewImg) previewImg.src = imgSrc;
+  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
   if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
 }
 
@@ -1191,7 +1247,7 @@ function updateGalleryImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('gallery-preview-img');
   const previewName = document.getElementById('gallery-preview-name');
   
-  if (previewImg) previewImg.src = imgSrc;
+  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
   if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
 }
 
@@ -2303,7 +2359,7 @@ function renderUranCategories() {
       <div>
         <div class="card-image-box" style="background: rgba(15, 23, 42, 0.6); height: 130px; display: flex; align-items: center; justify-content: center; padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); position: relative;">
           ${statusBadge}
-          <img src="${cat.image || '/images/categories/fruits.png'}" alt="${escapeHtml(cat.name)}" style="max-height: 85px; max-width: 85px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));" onerror="this.src='/images/categories/fruits.png'">
+          <img src="${escapeHtml(normalizeImageUrl(cat.image || '/images/categories/fruits.png'))}" alt="${escapeHtml(cat.name)}" style="max-height: 85px; max-width: 85px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));" onerror="this.src='/images/categories/fruits.png'">
           
           <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px;" onclick="event.stopPropagation()">
             <button class="action-btn-sm" title="Mavzuni Tahrirlash" onclick="openUranCategoryModal(${cat.id})">
@@ -2369,7 +2425,7 @@ async function openUranCategoryDetail(catId) {
     : `<span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 6px; font-weight: 700; margin-right: 6px;"><i class="bi bi-lock-fill"></i> Qulflangan</span>`;
 
   if (badgeEl) badgeEl.innerHTML = `${statusHtml} ${cat.words_count || 0} ta so'z`;
-  if (imgEl) imgEl.src = cat.image || '/images/categories/fruits.png';
+  if (imgEl) imgEl.src = normalizeImageUrl(cat.image || '/images/categories/fruits.png');
   if (searchInput) searchInput.value = '';
 
   if (grid) {
@@ -2548,7 +2604,7 @@ function updateUranCatImagePreview(path) {
   const clean = (path || '').trim() || '/images/categories/fruits.png';
   const previewImg = document.getElementById('uran-cat-preview-img');
   const previewLabel = document.getElementById('uran-cat-img-preview-label');
-  if (previewImg) previewImg.src = clean;
+  if (previewImg) previewImg.src = normalizeImageUrl(clean);
   if (previewLabel) {
     const parts = clean.split('/');
     previewLabel.innerText = parts[parts.length - 1] || clean;
@@ -3063,6 +3119,727 @@ function playWordAudio(word) {
 }
 
 
+// ==========================================================================
+// KUTUBXONA VA VIDEO/AUDIO DARSLAR (LIBRARY) CRUD & MANAGEMENT
+// ==========================================================================
+
+async function fetchLibraryCategories() {
+  try {
+    const res = await fetch('/api/library/categories/');
+    if (!res.ok) throw new Error("Kategoriyalarni olishda xatolik");
+    libraryCategoriesList = await res.json();
+    populateLibraryCategorySelects();
+  } catch (err) {
+    console.error("Library categories error:", err);
+  }
+}
+
+function populateLibraryCategorySelects() {
+  const modalSelect = document.getElementById('library-category-id');
+  const filterSelect = document.getElementById('library-cat-filter');
+
+  if (modalSelect && libraryCategoriesList.length > 0) {
+    const currentVal = modalSelect.value;
+    modalSelect.innerHTML = libraryCategoriesList.map(c => `
+      <option value="${c.id}">${escapeHtml(c.icon || '📚')} ${escapeHtml(c.name)}</option>
+    `).join('');
+    if (currentVal && Array.from(modalSelect.options).some(o => o.value == currentVal)) {
+      modalSelect.value = currentVal;
+    }
+  }
+
+  if (filterSelect && libraryCategoriesList.length > 0) {
+    const currentFilter = filterSelect.value;
+    filterSelect.innerHTML = `
+      <option value="">📚 Barcha Toifalar</option>
+      ${libraryCategoriesList.map(c => `
+        <option value="${c.id}">${escapeHtml(c.icon || '📚')} ${escapeHtml(c.name)}</option>
+      `).join('')}
+    `;
+    if (currentFilter) filterSelect.value = currentFilter;
+  }
+}
+
+async function fetchLibraryBooks() {
+  const container = document.getElementById('library-grid');
+  if (container && libraryList.length === 0) {
+    container.innerHTML = `<div class="loading-state">Kitoblar va videolar yuklanmoqda...</div>`;
+  }
+  try {
+    const res = await fetch('/api/library/books/?status=all&limit=100');
+    if (!res.ok) throw new Error("Kutubxona kitoblarini olishda xatolik");
+    libraryList = await res.json();
+    renderLibraryBooks();
+    syncAllCounts();
+  } catch (err) {
+    console.error("Fetch library books error:", err);
+    if (container) {
+      container.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">Kutubxona kitoblarini yuklab bo'lmadi. Server faolligini tekshiring.</div>`;
+    }
+  }
+}
+
+function renderLibraryBooks() {
+  syncAllCounts();
+  const container = document.getElementById('library-grid');
+  if (!container) return;
+
+  const searchTerm = (document.getElementById('library-search')?.value || '').toLowerCase().trim();
+  const catFilter = document.getElementById('library-cat-filter')?.value || '';
+  const mediaFilter = document.getElementById('library-media-filter')?.value || 'all';
+  const statusFilter = document.getElementById('library-status-filter')?.value || 'all';
+
+  const filtered = libraryList.filter(item => {
+    // Search
+    const titleMatch = (item.title || '').toLowerCase().includes(searchTerm);
+    const authorMatch = (item.author || '').toLowerCase().includes(searchTerm);
+    const descMatch = (item.description || '').toLowerCase().includes(searchTerm);
+    if (searchTerm && !titleMatch && !authorMatch && !descMatch) return false;
+
+    // Category
+    if (catFilter && item.category_id != catFilter) return false;
+
+    // Media Filter
+    const hasVideo = !!(item.video_url && item.video_url.trim());
+    const hasAudio = !!(item.audio_url && item.audio_url.trim());
+    if (mediaFilter === 'video' && !hasVideo) return false;
+    if (mediaFilter === 'audio' && !hasAudio) return false;
+
+    // Status Filter
+    if (statusFilter !== 'all' && (item.status || 'active') !== statusFilter) return false;
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1; padding: 40px; text-align: center;">
+        <i class="bi bi-collection-play text-yellow" style="font-size: 42px;"></i>
+        <h4 style="margin-top: 12px; font-weight: 700;">Hech qanday kitob yoki video topilmadi</h4>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Qidiruv mezonlarini o'zgartiring yoki yangi kitob/video qo'shing.</p>
+        <button class="btn btn-yellow" onclick="openLibraryModal()" style="margin-top: 14px;">
+          <i class="bi bi-plus-circle-fill"></i> Yangi Qo'shish
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => {
+    const cleanCover = toFullMediaUrl(item.cover_image || item.image || '/images/library/sariq_devni_minib.png');
+    const hasVideo = !!(item.video_url && item.video_url.trim());
+    const hasAudio = !!(item.audio_url && item.audio_url.trim());
+    const isFeatured = !!item.is_featured;
+    const isActive = (item.status || 'active') === 'active';
+
+    return `
+      <div class="library-card">
+        <div class="library-cover-container">
+          <img src="${escapeHtml(cleanCover)}" alt="${escapeHtml(item.title)}" class="library-cover-img" loading="lazy" onerror="this.src='/images/library/sariq_devni_minib.png'">
+          
+          <div class="library-badges-overlay">
+            <span class="badge-status ${isActive ? 'active' : 'inactive'}">
+              ${isActive ? '● Faol' : '● Nofaol'}
+            </span>
+            <div class="library-media-badges">
+              ${isFeatured ? '<span class="badge-media featured"><i class="bi bi-star-fill"></i> Sara</span>' : ''}
+              ${hasVideo ? '<span class="badge-media video"><i class="bi bi-film"></i> Video</span>' : ''}
+              ${hasAudio ? '<span class="badge-media audio"><i class="bi bi-headphones"></i> Audio</span>' : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="library-card-content">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-size: 11px; font-weight: 700; color: #818cf8; text-transform: uppercase; letter-spacing: 0.04em;">
+              ${escapeHtml(item.category_name || 'Kutubxona')}
+            </span>
+            <span style="font-size: 11px; color: var(--text-dim);">
+              <i class="bi bi-clock"></i> ${escapeHtml(item.duration_formatted || '10:00')}
+            </span>
+          </div>
+
+          <h4 class="library-card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</h4>
+          <div class="library-card-author"><i class="bi bi-person-fill"></i> ${escapeHtml(item.author || 'Noma\'lum')}</div>
+          
+          <p class="library-card-desc">${escapeHtml(item.description || 'Tavsif mavjud emas')}</p>
+
+          <div class="library-card-meta">
+            <span><i class="bi bi-person-badge"></i> ${escapeHtml(item.target_age || '7-12 yosh')}</span>
+            <span><i class="bi bi-headphones"></i> ${item.listen_count || 0} tinglash</span>
+            <span><i class="bi bi-heart-fill" style="color: #ef4444;"></i> ${item.likes_count || 0}</span>
+          </div>
+
+          <div class="library-card-actions">
+            ${hasVideo ? `
+              <button type="button" class="btn-media-action play-video" onclick="openLibraryVideoPlayer(${item.id})" title="Videoni tomosha qilish">
+                <i class="bi bi-play-circle-fill"></i> Video
+              </button>
+              <button type="button" class="action-btn-sm" onclick="downloadBookVideo(${item.id})" title="Videoni yuklab olish (.mp4)" style="color: var(--yellow-primary);">
+                <i class="bi bi-cloud-arrow-down-fill"></i>
+              </button>
+            ` : ''}
+
+            ${hasAudio ? `
+              <button type="button" class="btn-media-action play-audio" onclick="playBookAudio('${escapeHtml(toFullMediaUrl(item.audio_url))}', '${escapeHtml(item.title)}')" title="Audioni eshitish">
+                <i class="bi bi-headphones"></i> Audio
+              </button>
+              <button type="button" class="action-btn-sm" onclick="downloadBookAudio(${item.id})" title="Audioni yuklab olish (.mp3)" style="color: #818cf8;">
+                <i class="bi bi-download"></i>
+              </button>
+            ` : ''}
+
+            <button type="button" class="action-btn-sm" onclick="openLibraryModal(${item.id})" title="Tahrirlash">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <button type="button" class="action-btn-sm danger" onclick="handleDeleteLibraryBook(${item.id})" title="O'chirish">
+              <i class="bi bi-trash-fill"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Open Modal for Create or Edit
+function openLibraryModal(id = null) {
+  const modal = document.getElementById('library-modal');
+  const modalTitle = document.getElementById('library-modal-title');
+  const form = document.getElementById('library-form');
+  const delBtn = document.getElementById('library-delete-btn');
+
+  if (!modal || !form) return;
+  form.reset();
+
+  populateLibraryCategorySelects();
+
+  if (id) {
+    const item = libraryList.find(b => b.id === id);
+    if (item) {
+      document.getElementById('library-id').value = item.id;
+      document.getElementById('library-title').value = item.title || '';
+      document.getElementById('library-author').value = item.author || '';
+      if (document.getElementById('library-category-id')) {
+        document.getElementById('library-category-id').value = item.category_id || (libraryCategoriesList[0]?.id || 1);
+      }
+      if (document.getElementById('library-section')) {
+        document.getElementById('library-section').value = item.section || 'eng-sara';
+      }
+      document.getElementById('library-target-age').value = item.target_age || '7-12 yosh';
+      document.getElementById('library-duration-formatted').value = item.duration_formatted || '10:00';
+      document.getElementById('library-duration-seconds').value = item.duration_seconds || 600;
+      document.getElementById('library-status').value = item.status || 'active';
+      document.getElementById('library-is-featured').checked = !!item.is_featured;
+
+      const coverVal = item.cover_image || item.image || '/images/library/sariq_devni_minib.png';
+      document.getElementById('library-cover-url').value = coverVal;
+      updateLibraryCoverPreview(coverVal);
+
+      const videoVal = item.video_url || '';
+      document.getElementById('library-video-url').value = videoVal;
+      updateLibraryVideoPreview(videoVal);
+
+      const audioVal = item.audio_url || '';
+      document.getElementById('library-audio-url').value = audioVal;
+      updateLibraryAudioPreview(audioVal);
+
+      document.getElementById('library-desc').value = item.description || '';
+      document.getElementById('library-content').value = item.content || '';
+
+      if (modalTitle) {
+        modalTitle.innerHTML = '<i class="bi bi-pencil-square text-yellow"></i> <span>Kitob / Videoni Tahrirlash</span>';
+      }
+      if (delBtn) delBtn.style.display = 'inline-flex';
+    }
+  } else {
+    document.getElementById('library-id').value = '';
+    if (document.getElementById('library-category-id') && libraryCategoriesList.length > 0) {
+      document.getElementById('library-category-id').value = libraryCategoriesList[0].id;
+    }
+    document.getElementById('library-section').value = 'eng-sara';
+    document.getElementById('library-target-age').value = '7-12 yosh';
+    document.getElementById('library-duration-formatted').value = '10:00';
+    document.getElementById('library-duration-seconds').value = 600;
+    document.getElementById('library-status').value = 'active';
+    document.getElementById('library-is-featured').checked = false;
+
+    document.getElementById('library-cover-url').value = '/images/library/sariq_devni_minib.png';
+    updateLibraryCoverPreview('/images/library/sariq_devni_minib.png');
+
+    document.getElementById('library-video-url').value = '';
+    updateLibraryVideoPreview('');
+
+    document.getElementById('library-audio-url').value = '';
+    updateLibraryAudioPreview('');
+
+    document.getElementById('library-desc').value = '';
+    document.getElementById('library-content').value = '';
+
+    if (modalTitle) {
+      modalTitle.innerHTML = '<i class="bi bi-collection-play-fill text-yellow"></i> <span>Yangi Kitob / Video Qo\'shish</span>';
+    }
+    if (delBtn) delBtn.style.display = 'none';
+  }
+
+  modal.classList.add('show');
+}
+
+function closeLibraryModal() {
+  const vidPlayer = document.getElementById('library-video-preview-player');
+  if (vidPlayer) {
+    try { vidPlayer.pause(); } catch(e) {}
+    vidPlayer.src = '';
+  }
+  const audPlayer = document.getElementById('library-audio-preview-player');
+  if (audPlayer) {
+    try { audPlayer.pause(); } catch(e) {}
+    audPlayer.src = '';
+  }
+  const modal = document.getElementById('library-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+function handleDurationFormattedChange(val) {
+  if (!val) return;
+  const parts = val.trim().split(':');
+  if (parts.length === 2) {
+    const mins = parseInt(parts[0], 10) || 0;
+    const secs = parseInt(parts[1], 10) || 0;
+    const totalSecs = (mins * 60) + secs;
+    if (document.getElementById('library-duration-seconds')) {
+      document.getElementById('library-duration-seconds').value = totalSecs;
+    }
+  }
+}
+
+// Cover Image Handlers
+function updateLibraryCoverPreview(url) {
+  const img = document.getElementById('library-cover-preview');
+  const txt = document.getElementById('library-cover-name');
+  const clean = toFullMediaUrl(url || '/images/library/sariq_devni_minib.png');
+  if (img) img.src = clean;
+  if (txt) txt.innerText = url || '/images/library/sariq_devni_minib.png';
+}
+
+async function handleLibraryCoverUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showToast("Muqova rasmi yuklanmoqda...", "info");
+  try {
+    const res = await fetch('/api/library/upload-cover/', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Rasm yuklashda xatolik yuz berdi");
+    }
+    const data = await res.json();
+    const url = data.path || data.url;
+    document.getElementById('library-cover-url').value = url;
+    updateLibraryCoverPreview(url);
+    showToast("Muqova rasmi yuklandi!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+// Video Handlers
+function updateLibraryVideoPreview(url) {
+  const wrap = document.getElementById('library-video-preview-wrap');
+  const player = document.getElementById('library-video-preview-player');
+  if (!wrap || !player) return;
+
+  if (url && url.trim()) {
+    const fullUrl = toFullMediaUrl(url.trim());
+    player.src = fullUrl;
+    wrap.style.display = 'block';
+  } else {
+    try { player.pause(); } catch(e) {}
+    player.src = '';
+    wrap.style.display = 'none';
+  }
+}
+
+function clearLibraryVideo() {
+  if (document.getElementById('library-video-url')) document.getElementById('library-video-url').value = '';
+  if (document.getElementById('library-video-file')) document.getElementById('library-video-file').value = '';
+  updateLibraryVideoPreview('');
+  showToast("Video havolasi tozalandi", "info");
+}
+
+async function handleLibraryVideoUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (file.size > 250 * 1024 * 1024) {
+    showToast("Video hajmi 250MB dan oshmasligi kerak!", "error");
+    event.target.value = '';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showToast(`Video yuklanmoqda (${(file.size / (1024*1024)).toFixed(1)} MB)... Iltimos kuting.`, "info");
+
+  try {
+    const res = await fetch('/api/library/upload-video/', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Video yuklashda xatolik yuz berdi");
+    }
+
+    const data = await res.json();
+    const videoPath = data.path || data.video_url || data.url;
+    if (document.getElementById('library-video-url')) {
+      document.getElementById('library-video-url').value = videoPath;
+    }
+    updateLibraryVideoPreview(videoPath);
+    showToast("🎬 Video muvaffaqiyatli yuklandi!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function testPlayLibraryFormVideo() {
+  const url = document.getElementById('library-video-url')?.value.trim();
+  if (!url) {
+    showToast("Avval video havolasini kiriting yoki video yuklang!", "warning");
+    return;
+  }
+  const title = document.getElementById('library-title')?.value.trim() || 'Video Sinovi';
+  openVideoPlayerDirect(url, title);
+}
+
+function downloadCurrentInputVideo() {
+  const url = document.getElementById('library-video-url')?.value.trim();
+  if (!url) {
+    showToast("Yuklab olish uchun video manzili mavjud emas", "warning");
+    return;
+  }
+  const dlUrl = `/api/library/download-file?file_url=${encodeURIComponent(url)}`;
+  window.open(toFullMediaUrl(dlUrl), '_blank');
+}
+
+// Audio Handlers
+function updateLibraryAudioPreview(url) {
+  const wrap = document.getElementById('library-audio-preview-wrap');
+  const player = document.getElementById('library-audio-preview-player');
+  if (!wrap || !player) return;
+
+  if (url && url.trim()) {
+    player.src = toFullMediaUrl(url.trim());
+    wrap.style.display = 'block';
+  } else {
+    try { player.pause(); } catch(e) {}
+    player.src = '';
+    wrap.style.display = 'none';
+  }
+}
+
+function clearLibraryAudio() {
+  if (document.getElementById('library-audio-url')) document.getElementById('library-audio-url').value = '';
+  if (document.getElementById('library-audio-file')) document.getElementById('library-audio-file').value = '';
+  updateLibraryAudioPreview('');
+  showToast("Audio havolasi tozalandi", "info");
+}
+
+async function handleLibraryAudioUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showToast("Audio yuklanmoqda...", "info");
+  try {
+    const res = await fetch('/api/library/upload-audio/', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Audio yuklashda xatolik yuz berdi");
+    }
+    const data = await res.json();
+    const audioPath = data.path || data.audio_url || data.url;
+    document.getElementById('library-audio-url').value = audioPath;
+    updateLibraryAudioPreview(audioPath);
+    showToast("🎧 Audio fayl muvaffaqiyatli yuklandi!", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function handleGenerateLibraryAudioTTS() {
+  const bookId = document.getElementById('library-id')?.value;
+  const title = document.getElementById('library-title')?.value.trim();
+  const desc = document.getElementById('library-desc')?.value.trim();
+  const content = document.getElementById('library-content')?.value.trim();
+
+  if (!title && !content && !desc) {
+    showToast("Audio yaratish uchun kitob nomi yoki tavsifini kiriting!", "warning");
+    return;
+  }
+
+  if (bookId) {
+    const btn = document.getElementById('library-tts-gen-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Yaratilmoqda...';
+    }
+    showToast("Matndan o'zbekcha audio generatsiya qilinmoqda (Edge-TTS)...", "info");
+
+    try {
+      const res = await fetch(`/api/library/books/${bookId}/generate-audio/`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Audio generatsiyasida xatolik");
+      }
+      const data = await res.json();
+      if (data.audio_url) {
+        document.getElementById('library-audio-url').value = data.audio_url;
+        updateLibraryAudioPreview(data.audio_url);
+        showToast("Audio muvaffaqiyatli yaratildi va biriktirildi! 🎙️", "success");
+      }
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-stars"></i> Matndan AI Ovoz';
+      }
+    }
+  } else {
+    showToast("Avval yangi kitobni saqlang, so'ng AI ovoz generatsiya qiling!", "info");
+  }
+}
+
+// Save Library Book
+async function handleSaveLibraryBook(event) {
+  event.preventDefault();
+
+  const id = document.getElementById('library-id').value;
+  const title = document.getElementById('library-title').value.trim();
+  const author = document.getElementById('library-author').value.trim();
+  const category_id = parseInt(document.getElementById('library-category-id').value, 10) || 1;
+  const section = document.getElementById('library-section').value;
+  const target_age = document.getElementById('library-target-age').value.trim() || '7-12 yosh';
+  const duration_formatted = document.getElementById('library-duration-formatted').value.trim() || '10:00';
+  const duration_seconds = parseInt(document.getElementById('library-duration-seconds').value, 10) || 600;
+  const status = document.getElementById('library-status').value;
+  const is_featured = document.getElementById('library-is-featured').checked;
+  const cover_image = document.getElementById('library-cover-url').value.trim() || '/images/library/sariq_devni_minib.png';
+  const video_url = document.getElementById('library-video-url').value.trim();
+  const audio_url = document.getElementById('library-audio-url').value.trim();
+  const description = document.getElementById('library-desc').value.trim();
+  const content = document.getElementById('library-content').value.trim();
+
+  if (!title || !author || !description) {
+    showToast("Iltimos, sarlavha, muallif va tavsifni to'ldiring!", "warning");
+    return;
+  }
+
+  const payload = {
+    category_id,
+    title,
+    author,
+    cover_image,
+    description,
+    content,
+    audio_url,
+    video_url,
+    duration_seconds,
+    duration_formatted,
+    target_age,
+    is_featured,
+    section,
+    status
+  };
+
+  const saveBtn = document.getElementById('save-library-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saqlanmoqda...';
+  }
+
+  try {
+    let res;
+    if (id) {
+      res = await fetch(`/api/library/books/${id}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch('/api/library/books/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Kitobni saqlashda xatolik");
+    }
+
+    showToast(id ? "Kitob/video muvaffaqiyatli tahrirlandi! ✨" : "Yangi kitob/video muvaffaqiyatli qo'shildi! 🎉", "success");
+    closeLibraryModal();
+    await fetchLibraryBooks();
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="bi bi-check2-circle"></i> Saqlash';
+    }
+  }
+}
+
+// Delete Book
+async function handleDeleteLibraryBook(id) {
+  const item = libraryList.find(b => b.id === id);
+  const title = item ? item.title : 'ushbu kitobni';
+  if (!confirm(`Haqiqatan ham "${title}"ni o'chirmoqchimisiz?`)) return;
+
+  try {
+    const res = await fetch(`/api/library/books/${id}/`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Kitobni o'chirishda xatolik");
+    }
+    showToast("Kitob muvaffaqiyatli o'chirildi", "success");
+    await fetchLibraryBooks();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+function handleDeleteCurrentLibraryBookFromModal() {
+  const id = document.getElementById('library-id')?.value;
+  if (id) {
+    closeLibraryModal();
+    handleDeleteLibraryBook(parseInt(id, 10));
+  }
+}
+
+// Fullscreen Cinema Video Player Modal
+function openLibraryVideoPlayer(bookId) {
+  const item = libraryList.find(b => b.id === bookId);
+  if (!item || !item.video_url) {
+    showToast("Ushbu darsda video mavjud emas", "warning");
+    return;
+  }
+
+  currentModalBookId = bookId;
+  currentModalVideoUrl = toFullMediaUrl(item.video_url);
+  currentModalVideoTitle = item.title;
+
+  const modal = document.getElementById('library-video-modal');
+  const titleEl = document.getElementById('library-video-modal-title');
+  const subEl = document.getElementById('library-video-modal-sub');
+  const player = document.getElementById('library-modal-video-player');
+  const fileInfo = document.getElementById('library-video-modal-filename');
+
+  if (titleEl) titleEl.innerText = item.title;
+  if (subEl) subEl.innerText = `${item.author} • ${item.category_name || 'Kutubxona'}`;
+  if (fileInfo) fileInfo.innerText = item.video_url.split('/').pop() || 'video.mp4';
+
+  if (player) {
+    player.src = currentModalVideoUrl;
+    player.play().catch(() => {});
+  }
+
+  if (modal) modal.classList.add('show');
+}
+
+function openVideoPlayerDirect(url, title = 'Video') {
+  currentModalBookId = null;
+  currentModalVideoUrl = toFullMediaUrl(url);
+  currentModalVideoTitle = title;
+
+  const modal = document.getElementById('library-video-modal');
+  const titleEl = document.getElementById('library-video-modal-title');
+  const subEl = document.getElementById('library-video-modal-sub');
+  const player = document.getElementById('library-modal-video-player');
+  const fileInfo = document.getElementById('library-video-modal-filename');
+
+  if (titleEl) titleEl.innerText = title;
+  if (subEl) subEl.innerText = 'Video Dars Preview';
+  if (fileInfo) fileInfo.innerText = url.split('/').pop() || 'video.mp4';
+
+  if (player) {
+    player.src = currentModalVideoUrl;
+    player.play().catch(() => {});
+  }
+
+  if (modal) modal.classList.add('show');
+}
+
+function closeLibraryVideoModal() {
+  const player = document.getElementById('library-modal-video-player');
+  if (player) {
+    try { player.pause(); } catch(e) {}
+    player.src = '';
+  }
+  const modal = document.getElementById('library-video-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+function downloadCurrentModalVideo() {
+  if (currentModalBookId) {
+    downloadBookVideo(currentModalBookId);
+  } else if (currentModalVideoUrl) {
+    const dlUrl = `/api/library/download-file?file_url=${encodeURIComponent(currentModalVideoUrl)}`;
+    window.open(toFullMediaUrl(dlUrl), '_blank');
+  }
+}
+
+function downloadBookVideo(bookId) {
+  const dlUrl = `/api/library/books/${bookId}/download-video`;
+  showToast("Videoni yuklab olish boshlandi... 🎬", "info");
+  window.open(toFullMediaUrl(dlUrl), '_blank');
+}
+
+function downloadBookAudio(bookId) {
+  const dlUrl = `/api/library/books/${bookId}/download-audio`;
+  showToast("Audioni yuklab olish boshlandi... 🎧", "info");
+  window.open(toFullMediaUrl(dlUrl), '_blank');
+}
+
+// Global Audio playback for single click
+let currentGlobalAudio = null;
+function playBookAudio(audioUrl, title = '') {
+  if (!audioUrl) {
+    showToast("Audio manzili topilmadi", "warning");
+    return;
+  }
+  const fullUrl = toFullMediaUrl(audioUrl);
+  if (currentGlobalAudio) {
+    currentGlobalAudio.pause();
+    currentGlobalAudio = null;
+  }
+  currentGlobalAudio = new Audio(fullUrl);
+  currentGlobalAudio.play().then(() => {
+    showToast(`🎧 Tinglanmoqda: ${title || 'Audio kitob'}`, "info");
+  }).catch(e => {
+    console.error("Audio playback error:", e);
+    showToast("Audioni ijro etishda xatolik", "error");
+  });
+}
+
+
 // Explicitly expose functions to window for inline onclick attributes
 window.currentOpenCatId = currentOpenCatId;
 window.currentOpenCatName = currentOpenCatName;
@@ -3085,3 +3862,33 @@ window.handleToggleFaqStatus = handleToggleFaqStatus;
 window.renderFaqs = renderFaqs;
 window.fetchFaqs = fetchFaqs;
 window.switchTab = switchTab;
+
+// Library Window Exports
+window.fetchLibraryCategories = fetchLibraryCategories;
+window.fetchLibraryBooks = fetchLibraryBooks;
+window.renderLibraryBooks = renderLibraryBooks;
+window.openLibraryModal = openLibraryModal;
+window.closeLibraryModal = closeLibraryModal;
+window.handleDurationFormattedChange = handleDurationFormattedChange;
+window.updateLibraryCoverPreview = updateLibraryCoverPreview;
+window.handleLibraryCoverUpload = handleLibraryCoverUpload;
+window.updateLibraryVideoPreview = updateLibraryVideoPreview;
+window.clearLibraryVideo = clearLibraryVideo;
+window.handleLibraryVideoUpload = handleLibraryVideoUpload;
+window.testPlayLibraryFormVideo = testPlayLibraryFormVideo;
+window.downloadCurrentInputVideo = downloadCurrentInputVideo;
+window.updateLibraryAudioPreview = updateLibraryAudioPreview;
+window.clearLibraryAudio = clearLibraryAudio;
+window.handleLibraryAudioUpload = handleLibraryAudioUpload;
+window.handleGenerateLibraryAudioTTS = handleGenerateLibraryAudioTTS;
+window.handleSaveLibraryBook = handleSaveLibraryBook;
+window.handleDeleteLibraryBook = handleDeleteLibraryBook;
+window.handleDeleteCurrentLibraryBookFromModal = handleDeleteCurrentLibraryBookFromModal;
+window.openLibraryVideoPlayer = openLibraryVideoPlayer;
+window.openVideoPlayerDirect = openVideoPlayerDirect;
+window.closeLibraryVideoModal = closeLibraryVideoModal;
+window.downloadCurrentModalVideo = downloadCurrentModalVideo;
+window.downloadBookVideo = downloadBookVideo;
+window.downloadBookAudio = downloadBookAudio;
+window.playBookAudio = playBookAudio;
+
