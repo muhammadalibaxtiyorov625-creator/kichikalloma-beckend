@@ -1063,6 +1063,15 @@ def init_db():
         )
     """)
 
+    # 26. Bekor Qilingan Tokenlar Jadvali (Revoked Tokens for Logout & Account Deletion)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER,
+            revoked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 

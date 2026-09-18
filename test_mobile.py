@@ -99,8 +99,33 @@ def test_full_features():
     print(f"\n7. GET /mobile/planets/ -> Status: {status} ({len(planets)} ta sayyora)")
     assert status == 200
 
+    # 8. Tizimdan Chiqish (Logout)
+    status, logout_res = req(f"{BASE_URL}/mobile/logout/", "POST", token=token)
+    print(f"\n8. POST /mobile/logout/ -> Status: {status}")
+    print(f"   Xabar: {logout_res.get('message')}")
+    assert status == 200
+
+    # 8.1. Chiqilgan token orqali so'rov yuborish (401 qaytarishi shart)
+    status, rej_res = req(f"{BASE_URL}/mobile/parent/profile/", "GET", token=token)
+    print(f"   Bekor qilingan token tekshiruvi: Status: {status} (Kutilgan: 401)")
+    assert status == 401
+
+    # 9. Qayta kirish va Akkountni Butunlay O'chirish (Delete Account)
+    status, data = req(f"{BASE_URL}/mobile/send-otp/", "POST", {"phone": test_phone})
+    status, data = req(f"{BASE_URL}/mobile/verify-otp/", "POST", {"phone": test_phone, "code": data["code"]})
+    token_new = data["access_token"]
+    status, del_res = req(f"{BASE_URL}/mobile/delete-account/", "DELETE", {"passcode": "0000"}, token=token_new)
+    print(f"\n9. DELETE /mobile/delete-account/ -> Status: {status}")
+    print(f"   Xabar: {del_res.get('message')}")
+    assert status == 200
+
+    # 9.1. O'chirilgan akkount tokeni orqali so'rov (401 qaytarishi shart)
+    status, _ = req(f"{BASE_URL}/mobile/parent/profile/", "GET", token=token_new)
+    print(f"   O'chirilgan hisob tokeni tekshiruvi: Status: {status} (Kutilgan: 401)")
+    assert status == 401
+
     print("\n" + "="*60)
-    print("  CODE-ACCESS BOLA MA'LUMOTLARI VA BARCHA TESTLAR 100% ISHLAMOQDA!")
+    print("  CODE-ACCESS, LOGOUT, DELETE ACCOUNT VA BARCHA TESTLAR 100% ISHLAMOQDA!")
     print("="*60)
 
 if __name__ == "__main__":

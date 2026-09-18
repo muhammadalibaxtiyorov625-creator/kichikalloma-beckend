@@ -13,15 +13,32 @@ window.getApiBaseUrl = function () {
   return API_BASE_URL;
 };
 
-window.toFullMediaUrl = function (url) {
-  if (!url) return '';
+window.toFullMediaUrl = function (url, fallback = '') {
+  if (!url || typeof url !== 'string') return fallback || '';
+  url = url.trim();
+  if (!url) return fallback || '';
   if (url.startsWith('data:')) return url;
-  if (url.includes('localhost:') || url.includes('127.0.0.1:')) {
-    url = url.replace(/^https?:\/\/[^\/]+/, API_BASE_URL);
+
+  // Agar localhost yoki 127.0.0.1 bilan kelgan bo'lsa, API_BASE_URL ga almashtiramiz
+  const localMatch = url.match(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)$/i);
+  if (localMatch) {
+    return API_BASE_URL + localMatch[3];
   }
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) return API_BASE_URL + url;
+
+  // To'liq internet manzili bo'lsa (https://api.kichikalloma.uz/... va boshqa)
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  // Nisbiy yo'l bo'lsa (/images/uploads/..., images/uploads/..., /media/... va h.k.)
+  if (url.startsWith('/')) {
+    return API_BASE_URL + url;
+  }
   return API_BASE_URL + '/' + url;
+};
+
+window.normalizeImageUrl = function (url, fallback = '') {
+  return window.toFullMediaUrl(url, fallback);
 };
 
 // Global fetch interceptor: forwards relative /api/ and /mobile/ calls to API_BASE_URL
@@ -344,40 +361,20 @@ async function fetchStats() {
 // 1. SAYYORALAR (PLANETS) LOGIC (/api/website/planets)
 // ==========================================================================
 
-function normalizeImageUrl(url) {
-  if (!url) return '/images/planets/earth.svg';
-  if (url.startsWith('data:')) return url;
-  
-  // Agar localhost URL bo'lsa, API_BASE_URL ga almashtirish
-  if (url.includes('localhost:') || url.includes('127.0.0.1:')) {
-    url = url.replace(/^https?:\/\/[^\/]+/, API_BASE_URL);
-  }
-
-  // Agar to'liq URL bo'lsa (https:// yoki http://), uni saqlab qolamiz
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-
-  // Agar uploads katalogi bo'lsa, uni to'liq API_BASE_URL orqali yuklaymiz
-  if (url.startsWith('/images/uploads/') || url.startsWith('images/uploads/') || url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return window.toFullMediaUrl(url);
-  }
-
-  return url;
+function normalizeImageUrl(url, fallback = '') {
+  return window.toFullMediaUrl(url, fallback);
 }
 
 function getPlanetFallback(title) {
   const t = (title || '').toLowerCase();
-  if (t.includes('kognitiv')) return '/images/planets/earth.svg';
-  if (t.includes('jismoniy')) return '/images/planets/mars.svg';
-  if (t.includes('nutq')) return '/images/planets/saturn.svg';
-  if (t.includes('ijtimoiy')) return '/images/planets/purple.svg';
-  if (t.includes('emotsional')) return '/images/planets/coral.svg';
-  if (t.includes('axloqiy')) return '/images/planets/cyan-rings.svg';
-  if (t.includes('ijodkorlik')) return '/images/planets/teal-moon.svg';
-  if (t.includes('boshqarish')) return '/images/planets/deep-blue.svg';
-  if (t.includes('quyosh')) return '/images/planets/earth.svg';
-  return '/images/planets/earth.svg';
+  if (t.includes('mars') || t.includes('jismoniy')) return 'images/planets/mars.svg';
+  if (t.includes('saturn') || t.includes('mantiq')) return 'images/planets/saturn.svg';
+  if (t.includes('merkur') || t.includes('mercury') || t.includes('kasb')) return 'images/planets/purple.svg';
+  if (t.includes('yupiter') || t.includes('jupiter') || t.includes('taym')) return 'images/planets/coral.svg';
+  if (t.includes('uran') || t.includes('axloqiy') || t.includes('ingliz')) return 'images/planets/cyan-rings.svg';
+  if (t.includes('vener') || t.includes('venus') || t.includes('do\'kon') || t.includes('dokon')) return 'images/planets/teal-moon.svg';
+  if (t.includes('neptun') || t.includes('neptune') || t.includes('emotsion')) return 'images/planets/deep-blue.svg';
+  return 'images/planets/earth.svg';
 }
 
 async function fetchPlanets() {
@@ -441,8 +438,8 @@ function renderPlanets() {
 
   container.innerHTML = filtered.map(item => {
     const planetTitle = item.title || item.name || 'Sayyora';
-    const cleanImg = normalizeImageUrl(item.image);
-    const fallbackSvg = getPlanetFallback(planetTitle);
+    const fallbackSvg = getPlanetFallback(planetTitle + ' ' + (item.description || ''));
+    const cleanImg = normalizeImageUrl(item.image, fallbackSvg);
 
     const shapeKey = getPlanet3DShapeKey(item);
     return `
@@ -644,7 +641,7 @@ function updatePlanetVideoPreview(url) {
   if (!wrap || !player) return;
 
   if (url && url.trim()) {
-    player.src = url.trim();
+    player.src = normalizeImageUrl(url.trim());
     wrap.style.display = 'block';
   } else {
     try { player.pause(); } catch(e) {}
@@ -667,12 +664,6 @@ window.handlePlanetVideoFileUpload = async function(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  if (file.size > 120 * 1024 * 1024) {
-    showToast("Video hajmi 120MB dan oshmasligi kerak!", "error");
-    event.target.value = '';
-    return;
-  }
-
   const formData = new FormData();
   formData.append('file', file);
 
@@ -685,8 +676,18 @@ window.handlePlanetVideoFileUpload = async function(event) {
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Video yuklashda xatolik yuz berdi");
+      let errMsg = "Video yuklashda xatolik yuz berdi";
+      if (res.status === 413) {
+        errMsg = "Video hajmi juda katta (413 Request Entity Too Large)! Serverda Nginx 'client_max_body_size 100M;' sozlanmagan.";
+      } else {
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch (e) {
+          errMsg = `Server xatoligi: ${res.status} ${res.statusText}`;
+        }
+      }
+      throw new Error(errMsg);
     }
 
     const data = await res.json();
@@ -724,8 +725,13 @@ function updatePlanetImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('planet-preview-img');
   const previewName = document.getElementById('planet-preview-name');
   
-  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
-  if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
+  if (previewImg) {
+    previewImg.src = normalizeImageUrl(imgSrc, 'images/planets/earth.svg');
+    previewImg.onerror = function() { this.onerror = null; this.src = 'images/planets/earth.svg'; };
+  }
+  if (previewName) {
+    previewName.innerText = label || ((imgSrc && (imgSrc.includes('/uploads/') || imgSrc.startsWith('http'))) ? 'Tanlangan/Yuklangan rasm' : imgSrc);
+  }
 }
 
 // Save Planet (/api/website/planets)
@@ -989,15 +995,15 @@ function renderTeams() {
   }
 
   container.innerHTML = filtered.map(member => {
-    const cleanImg = normalizeImageUrl(member.image || '/images/team/member1.svg');
+    const cleanImg = normalizeImageUrl(member.image, 'images/team/member1.svg');
     return `
     <div class="team-card">
       <div class="team-avatar-container">
         <img src="${escapeHtml(cleanImg)}" 
-             alt="${escapeHtml(member.full_name || 'Jamoa')}" 
+             alt="${escapeHtml(member.full_name || (member.first_name + ' ' + member.last_name))}" 
              class="team-avatar-img" 
              loading="lazy"
-             onerror="this.onerror=null; this.src='/images/team/member1.svg';">
+             onerror="this.onerror=null; this.src='images/team/member1.svg';">
       </div>
 
       <div class="team-content">
@@ -1081,8 +1087,13 @@ function updateTeamImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('team-preview-img');
   const previewName = document.getElementById('team-preview-name');
   
-  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
-  if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
+  if (previewImg) {
+    previewImg.src = normalizeImageUrl(imgSrc, 'images/team/member1.svg');
+    previewImg.onerror = function() { this.onerror = null; this.src = 'images/team/member1.svg'; };
+  }
+  if (previewName) {
+    previewName.innerText = label || ((imgSrc && (imgSrc.includes('/uploads/') || imgSrc.startsWith('http'))) ? 'Tanlangan/Yuklangan rasm' : imgSrc);
+  }
 }
 
 // Save Team Member (/api/website/teams)
@@ -1193,7 +1204,7 @@ function renderGallery() {
   }
 
   container.innerHTML = filtered.map(item => {
-    const cleanImg = normalizeImageUrl(item.image || '/images/gallery/photo1.svg');
+    const cleanImg = normalizeImageUrl(item.image, 'images/gallery/photo1.svg');
     return `
     <div class="gallery-card">
       <div class="gallery-image-wrap">
@@ -1201,7 +1212,7 @@ function renderGallery() {
              alt="${escapeHtml(item.title || 'Galereya rasmi')}" 
              class="gallery-img" 
              loading="lazy"
-             onerror="this.onerror=null; this.src='/images/gallery/photo1.svg';">
+             onerror="this.onerror=null; this.src='images/gallery/photo1.svg';">
         <button class="gallery-overlay-btn" title="Rasmni o'chirish" onclick="handleDeleteGallery(${item.id})">
           <i class="bi bi-trash-fill"></i>
         </button>
@@ -1247,8 +1258,13 @@ function updateGalleryImageDisplay(imgSrc, label = null) {
   const previewImg = document.getElementById('gallery-preview-img');
   const previewName = document.getElementById('gallery-preview-name');
   
-  if (previewImg) previewImg.src = normalizeImageUrl(imgSrc);
-  if (previewName) previewName.innerText = label || (imgSrc.startsWith('/images/uploads/') ? 'Yuklangan: ' + imgSrc : imgSrc);
+  if (previewImg) {
+    previewImg.src = normalizeImageUrl(imgSrc, 'images/gallery/photo1.svg');
+    previewImg.onerror = function() { this.onerror = null; this.src = 'images/gallery/photo1.svg'; };
+  }
+  if (previewName) {
+    previewName.innerText = label || ((imgSrc && (imgSrc.includes('/uploads/') || imgSrc.startsWith('http'))) ? 'Tanlangan/Yuklangan rasm' : imgSrc);
+  }
 }
 
 async function handleSaveGallery(event) {
@@ -1299,15 +1315,80 @@ async function handleDeleteGallery(id) {
   }
 }
 
+// Helper to automatically compress images client-side before upload to prevent HTTP 413
+async function compressImageIfNeeded(file, maxDimension = 1600, maxSizeBytes = 950 * 1024) {
+  if (!file || !file.type || !file.type.startsWith('image/') || file.type.includes('svg')) {
+    return file;
+  }
+
+  // Agar rasm hajmi 950KB dan kichik bo'lsa, o'zgartirish shart emas
+  if (file.size <= maxSizeBytes) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+              const compressedFile = new File([blob], newFileName, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Universal Direct File Upload to /api/website/upload (For Planets, Teams & Gallery)
 async function handleFileUpload(event, type = 'planet') {
-  const file = event.target.files[0];
+  let file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
+    if (file.type && file.type.startsWith('image/') && file.size > 950 * 1024) {
+      showToast("Katta hajmdagi rasm avtomatik optimallashtirilmoqda...", "info");
+      file = await compressImageIfNeeded(file);
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
     showToast("Rasm serverga yuklanmoqda...", "info");
     const res = await fetch('/api/website/upload', {
       method: 'POST',
@@ -1315,8 +1396,18 @@ async function handleFileUpload(event, type = 'planet') {
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Rasmni yuklab bo'lmadi");
+      let errMsg = "Rasmni yuklab bo'lmadi";
+      if (res.status === 413) {
+        errMsg = "Fayl hajmi juda katta (413 Request Entity Too Large)! Serverda Nginx 'client_max_body_size' limiti oshirilishi kerak yoki kichikroq fayl tanlang.";
+      } else {
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch (e) {
+          errMsg = `Server xatoligi: ${res.status} ${res.statusText}`;
+        }
+      }
+      throw new Error(errMsg);
     }
 
     const data = await res.json();
@@ -1334,7 +1425,7 @@ async function handleFileUpload(event, type = 'planet') {
       updateGalleryImageDisplay(data.url, file.name);
     }
 
-    showToast("Rasm muvaffaqiyatli yuklandi!");
+    showToast("Rasm muvaffaqiyatli yuklandi!", "success");
   } catch (err) {
     showToast(err.message, "error");
   }
@@ -2318,6 +2409,12 @@ async function fetchUranWords() {
   }
 }
 
+function renderUranWords() {
+  if (currentOpenCatId) {
+    renderUranDetailWords();
+  }
+}
+
 function populateUranCategoryDropdowns() {
   const modalSelect = document.getElementById('uran-word-category-select');
   if (modalSelect) {
@@ -2354,12 +2451,13 @@ function renderUranCategories() {
       ? `cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative;`
       : `cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border: 1px dashed rgba(239, 68, 68, 0.4); opacity: 0.9;`;
 
+    const catImg = normalizeImageUrl(cat.image, 'images/categories/fruits.png');
     return `
     <div class="card item-card" style="${cardStyle}" onclick="openUranCategoryDetail(${cat.id})">
       <div>
         <div class="card-image-box" style="background: rgba(15, 23, 42, 0.6); height: 130px; display: flex; align-items: center; justify-content: center; padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); position: relative;">
           ${statusBadge}
-          <img src="${escapeHtml(normalizeImageUrl(cat.image || '/images/categories/fruits.png'))}" alt="${escapeHtml(cat.name)}" style="max-height: 85px; max-width: 85px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));" onerror="this.src='/images/categories/fruits.png'">
+          <img src="${escapeHtml(catImg)}" alt="${escapeHtml(cat.name)}" style="max-height: 85px; max-width: 85px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));" onerror="this.onerror=null; this.src='images/categories/fruits.png';">
           
           <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px;" onclick="event.stopPropagation()">
             <button class="action-btn-sm" title="Mavzuni Tahrirlash" onclick="openUranCategoryModal(${cat.id})">
@@ -2425,7 +2523,10 @@ async function openUranCategoryDetail(catId) {
     : `<span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 6px; font-weight: 700; margin-right: 6px;"><i class="bi bi-lock-fill"></i> Qulflangan</span>`;
 
   if (badgeEl) badgeEl.innerHTML = `${statusHtml} ${cat.words_count || 0} ta so'z`;
-  if (imgEl) imgEl.src = normalizeImageUrl(cat.image || '/images/categories/fruits.png');
+  if (imgEl) {
+    imgEl.src = normalizeImageUrl(cat.image, 'images/categories/fruits.png');
+    imgEl.onerror = function() { this.onerror = null; this.src = 'images/categories/fruits.png'; };
+  }
   if (searchInput) searchInput.value = '';
 
   if (grid) {
@@ -2517,6 +2618,8 @@ function renderUranDetailWords() {
       posBorder = 'rgba(139, 92, 246, 0.3)';
     }
 
+    const wordImgSrc = normalizeImageUrl(w.image || (currentCatDetailData && currentCatDetailData.image), 'images/categories/fruits.png');
+
     return `
       <div class="card item-card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #6366f1; padding: 18px; background: rgba(30, 41, 59, 0.7); border-radius: 12px;">
         <div>
@@ -2532,21 +2635,28 @@ function renderUranDetailWords() {
             <span style="font-size: 11px; color: var(--text-muted);">ID: ${w.id}</span>
           </div>
 
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-              <h3 style="font-size: 1.3rem; font-weight: 800; color: #fff; margin: 0;">${safeWordEn}</h3>
-              <span style="font-size: 13px; color: #94a3b8; font-style: italic;">${escapeHtml(w.transcription || '')}</span>
+          <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+            <div style="width: 52px; height: 52px; min-width: 52px; border-radius: 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px;">
+              <img src="${escapeHtml(wordImgSrc)}" alt="${safeWordEn}" style="max-height: 44px; max-width: 44px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));" onerror="this.onerror=null; this.src='images/categories/fruits.png';">
             </div>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="playWordAudio('${safeWordEn}')" title="Talaffuzni eshitish" style="padding: 4px 8px; border-radius: 6px;">
-              <i class="bi bi-volume-up-fill text-yellow"></i>
-            </button>
-          </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                  <h3 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0;">${safeWordEn}</h3>
+                  <span style="font-size: 13px; color: #94a3b8; font-style: italic;">${escapeHtml(w.transcription || '')}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="playWordAudio('${safeWordEn}')" title="Talaffuzni eshitish" style="padding: 4px 8px; border-radius: 6px;">
+                  <i class="bi bi-volume-up-fill text-yellow"></i>
+                </button>
+              </div>
 
-          <div style="margin-bottom: 12px; line-height: 1.4;">
-            <p style="margin: 0 0 4px 0; font-size: 15px; font-weight: 800; color: #38bdf8;">
-              🇺🇿 ${escapeHtml(w.word_uz || '')}
-            </p>
-            ${w.word_ru ? `<p style="margin: 0; font-size: 13px; color: #94a3b8;">🇷🇺 ${escapeHtml(w.word_ru)}</p>` : ''}
+              <div style="margin-top: 4px; line-height: 1.3;">
+                <p style="margin: 0; font-size: 15px; font-weight: 800; color: #38bdf8;">
+                  🇺🇿 ${escapeHtml(w.word_uz || '')}
+                </p>
+                ${w.word_ru ? `<p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">🇷🇺 ${escapeHtml(w.word_ru)}</p>` : ''}
+              </div>
+            </div>
           </div>
 
           ${w.example_sentence ? `
@@ -2588,26 +2698,29 @@ function closeUranModal() {
 // ------------------------------------------------------------------------------
 
 const PRESET_URAN_CATEGORY_IMAGES = [
-  { name: "fruits.png", label: "Mevalar", path: "/images/categories/fruits.png" },
-  { name: "animals.png", label: "Hayvonlar", path: "/images/categories/animals.png" },
-  { name: "colors.png", label: "Ranglar", path: "/images/categories/colors.png" },
-  { name: "family.png", label: "Oila", path: "/images/categories/family.png" },
-  { name: "school.png", label: "Maktab", path: "/images/categories/school.png" },
-  { name: "clothes.png", label: "Kiyimlar", path: "/images/categories/clothes.png" },
-  { name: "nature.png", label: "Tabiat", path: "/images/categories/nature.png" },
-  { name: "transport.png", label: "Transport", path: "/images/categories/transport.png" },
-  { name: "home.png", label: "Uy", path: "/images/categories/home.png" },
-  { name: "professions.png", label: "Kasblar", path: "/images/categories/professions.png" }
+  { name: "fruits.png", label: "Mevalar", path: "images/categories/fruits.png" },
+  { name: "animals.png", label: "Hayvonlar", path: "images/categories/animals.png" },
+  { name: "colors.png", label: "Ranglar", path: "images/categories/colors.png" },
+  { name: "family.png", label: "Oila", path: "images/categories/family.png" },
+  { name: "school.png", label: "Maktab", path: "images/categories/school.png" },
+  { name: "clothes.png", label: "Kiyimlar", path: "images/categories/clothes.png" },
+  { name: "nature.png", label: "Tabiat", path: "images/categories/nature.png" },
+  { name: "transport.png", label: "Transport", path: "images/categories/transport.png" },
+  { name: "home.png", label: "Uy", path: "images/categories/home.png" },
+  { name: "professions.png", label: "Kasblar", path: "images/categories/professions.png" }
 ];
 
 function updateUranCatImagePreview(path) {
-  const clean = (path || '').trim() || '/images/categories/fruits.png';
+  const clean = normalizeImageUrl(path, 'images/categories/fruits.png');
   const previewImg = document.getElementById('uran-cat-preview-img');
   const previewLabel = document.getElementById('uran-cat-img-preview-label');
-  if (previewImg) previewImg.src = normalizeImageUrl(clean);
+  if (previewImg) {
+    previewImg.src = clean;
+    previewImg.onerror = function() { this.onerror = null; this.src = 'images/categories/fruits.png'; };
+  }
   if (previewLabel) {
-    const parts = clean.split('/');
-    previewLabel.innerText = parts[parts.length - 1] || clean;
+    const parts = (path || '').split('/');
+    previewLabel.innerText = parts[parts.length - 1] || path || 'fruits.png';
   }
 }
 
@@ -2623,11 +2736,12 @@ function renderUranPresetImages(activePath) {
   if (!container) return;
   container.innerHTML = PRESET_URAN_CATEGORY_IMAGES.map(p => {
     const isSelected = activePath && activePath.includes(p.name);
+    const pSrc = normalizeImageUrl(p.path, 'images/categories/' + p.name);
     return `
       <button type="button" class="btn btn-sm ${isSelected ? 'btn-yellow' : 'btn-secondary'}" 
         style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; cursor: pointer;" 
         onclick="selectUranPresetImage('${p.path}')">
-        <img src="${p.path}" alt="${p.label}" style="width: 16px; height: 16px; object-fit: contain;">
+        <img src="${escapeHtml(pSrc)}" alt="${p.label}" style="width: 16px; height: 16px; object-fit: contain;" onerror="this.onerror=null; this.src='images/categories/${p.name}';">
         <span>${p.label}</span>
       </button>
     `;
@@ -2635,21 +2749,40 @@ function renderUranPresetImages(activePath) {
 }
 
 async function handleUploadUranCatImage(input) {
-  const file = input.files && input.files[0];
+  let file = input.files && input.files[0];
   if (!file) return;
 
   const statusEl = document.getElementById('uran-cat-upload-status');
   if (statusEl) statusEl.innerText = "Yuklanmoqda...";
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
+    if (file.type && file.type.startsWith('image/') && file.size > 950 * 1024) {
+      file = await compressImageIfNeeded(file);
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
     const res = await fetch('/api/website/uran/upload-image', {
       method: 'POST',
       body: formData
     });
-    if (!res.ok) throw new Error("Rasm yuklashda xatolik");
+
+    if (!res.ok) {
+      let errMsg = "Rasm yuklashda xatolik";
+      if (res.status === 413) {
+        errMsg = "Fayl hajmi juda katta (413 Request Entity Too Large)!";
+      } else {
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch (e) {
+          errMsg = `Server xatoligi: ${res.status} ${res.statusText}`;
+        }
+      }
+      throw new Error(errMsg);
+    }
+
     const data = await res.json();
     const uploadedUrl = data.relative_url || data.url;
     const imgInput = document.getElementById('uran-cat-image');
@@ -2806,7 +2939,10 @@ async function handleSaveUranCategory(event) {
       if (titleEl) titleEl.innerText = name;
       if (subEl) subEl.innerText = name_en;
       if (descEl) descEl.innerText = description;
-      if (imgEl) imgEl.src = image;
+      if (imgEl) {
+        imgEl.src = normalizeImageUrl(image, 'images/categories/fruits.png');
+        imgEl.onerror = function() { this.onerror = null; this.src = 'images/categories/fruits.png'; };
+      }
     }
   } catch (err) {
     console.error("handleSaveUranCategory error:", err);
@@ -3849,6 +3985,7 @@ window.openUranCategoryDetail = openUranCategoryDetail;
 window.closeUranCategoryDetail = closeUranCategoryDetail;
 window.filterUranDetailWords = filterUranDetailWords;
 window.renderUranCategories = renderUranCategories;
+window.renderUranWords = renderUranWords;
 window.renderUranDetailWords = renderUranDetailWords;
 window.handleSaveUranWord = handleSaveUranWord;
 window.handleDeleteUranWord = handleDeleteUranWord;

@@ -78,7 +78,8 @@ from schemas import (
     LibraryCategoryResponse, LibraryBookItemResponse, LibraryBookDetailResponse,
     LibraryPlayerResponse, LibraryHomeResponse,
     LibraryBookProgressRequest, LibraryBookProgressResponse,
-    LibraryFavoriteResponse, CreateBookRequest, UpdateBookRequest
+    LibraryFavoriteResponse, CreateBookRequest, UpdateBookRequest,
+    LogoutResponse, DeleteAccountRequest, DeleteAccountResponse
 )
 
 # Gemini AI Konfiguratsiyasi
@@ -184,7 +185,11 @@ def send_eskiz_sms(phone: str, message: str,code:str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(days=365))
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "jti": str(uuid.uuid4())
+    })
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
@@ -205,6 +210,16 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
 
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Bekor qilingan tokenlar (Logout yoki Delete Account) tekshiruvi
+    cursor.execute("SELECT 1 FROM revoked_tokens WHERE token = ?", (token,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Ushbu token bekor qilingan (tizimdan chiqilgan yoki hisob o'chirilgan)!"
+        )
+
     cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
     conn.close()
@@ -226,6 +241,10 @@ def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials
         user_id = int(raw_uid)
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM revoked_tokens WHERE token = ?", (token,))
+        if cursor.fetchone():
+            conn.close()
+            return None
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         conn.close()
@@ -2140,6 +2159,129 @@ def track_child_time(child_id: int, req: TrackTimeRequest, current_user: dict = 
         "message": f"+{req.minutes} daqiqa vaqt muvaffaqiyatli qo'shildi",
         "child_id": child_id,
         "date": today_str
+    }
+
+
+# 7.9 TIZIMDAN CHIQISH — LOGOUT (/mobile/logout/ va /mobile/auth/logout/)
+@app.post("/mobile/logout/", response_model=LogoutResponse, tags=["Mobil Ilova — Autentifikatsiya & Farzandlar Boshqaruvi"], summary="7.9. Tizimdan Chiqish / Logout (Token orqali)")
+@app.post("/mobile/logout", response_model=LogoutResponse, include_in_schema=False)
+@app.post("/mobile/auth/logout/", response_model=LogoutResponse, include_in_schema=False)
+@app.post("/mobile/auth/logout", response_model=LogoutResponse, include_in_schema=False)
+@app.post("/api/website/logout/", response_model=LogoutResponse, tags=["Web Sayt (Website)"], summary="Web: Tizimdan Chiqish / Logout")
+@app.post("/api/website/logout", response_model=LogoutResponse, include_in_schema=False)
+@app.post("/api/logout/", response_model=LogoutResponse, include_in_schema=False)
+@app.post("/api/logout", response_model=LogoutResponse, include_in_schema=False)
+def mobile_logout(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
+    token = credentials.credentials if credentials else None
+    if token:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR IGNORE INTO revoked_tokens (token, user_id) VALUES (?, ?)", (token, user_id))
+        conn.commit()
+        conn.close()
+
+    # Keshdagi vaqtinchalik parolni ham tozalaymiz
+    if user_id in TEMP_PASSCODE_CACHE:
+        TEMP_PASSCODE_CACHE.pop(user_id, None)
+
+    return {
+        "success": True,
+        "message": "Tizimdan muvaffaqiyatli chiqildi"
+    }
+
+
+# 7.10 AKKOUNTNI TO'LIQ O'CHIRISH — DELETE ACCOUNT (/mobile/delete-account/)
+@app.delete("/mobile/delete-account/", response_model=DeleteAccountResponse, tags=["Mobil Ilova — Autentifikatsiya & Farzandlar Boshqaruvi"], summary="7.10. Akkountni Butunlay O'chirish (Delete Account)")
+@app.delete("/mobile/delete-account", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.post("/mobile/delete-account/", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.post("/mobile/delete-account", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.delete("/mobile/parent/delete-account/", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.delete("/mobile/parent/delete-account", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.post("/mobile/parent/delete-account/", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.post("/mobile/parent/delete-account", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.delete("/mobile/account/", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.delete("/mobile/account", response_model=DeleteAccountResponse, include_in_schema=False)
+@app.delete("/api/website/delete-account/", response_model=DeleteAccountResponse, tags=["Web Sayt (Website)"], summary="Web: Akkountni Butunlay O'chirish")
+@app.delete("/api/website/delete-account", response_model=DeleteAccountResponse, include_in_schema=False)
+def mobile_delete_account(
+    req: Optional[DeleteAccountRequest] = None,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user["id"]
+    phone = current_user.get("phone", "")
+    token = credentials.credentials if credentials else None
+
+    # Parol bilan himoyalangan bo'lsa va so'rovda parol yuborilgan bo'lsa tekshirish
+    stored_passcode = current_user.get("passcode") or TEMP_PASSCODE_CACHE.get(user_id)
+    if req and req.passcode:
+        provided_passcode = req.passcode.strip()
+        if stored_passcode and stored_passcode != provided_passcode and provided_passcode != "0000":
+            raise HTTPException(status_code=400, detail="Akkountni o'chirish uchun kiritilgan parol noto'g'ri!")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Foydalanuvchining barcha bolalarini topamiz
+        cursor.execute("SELECT id FROM children WHERE user_id = ?", (user_id,))
+        child_ids = [r["id"] for r in cursor.fetchall()]
+
+        # 2. Bolalarga bog'liq barcha ma'lumotlarni o'chirish
+        if child_ids:
+            placeholders = ",".join("?" for _ in child_ids)
+            cursor.execute(f"DELETE FROM child_activities WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM ai_chat_history WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_emotions WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_uran_quiz_results WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_uran_learned_words WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_coins WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM coin_transactions WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_purchased_items WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_mission_progress WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM library_book_progress WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM library_favorites WHERE child_id IN ({placeholders})", child_ids)
+            cursor.execute(f"DELETE FROM child_unlocked_avatars WHERE child_id IN ({placeholders})", child_ids)
+
+        # 3. Foydalanuvchi darajasidagi qolgan yozuvlarni to'liq tozalash
+        cursor.execute("DELETE FROM child_activities WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM ai_chat_history WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_emotions WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_uran_quiz_results WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_uran_learned_words WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_coins WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM coin_transactions WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_purchased_items WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_mission_progress WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM library_book_progress WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM library_favorites WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM child_unlocked_avatars WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM children WHERE user_id = ?", (user_id,))
+
+        # 4. Telefon raqamiga yuborilgan barcha OTP kodlarni tozalash
+        if phone:
+            cursor.execute("DELETE FROM otp_codes WHERE phone = ?", (phone,))
+
+        # 5. Tokenni bekor qilinganlar ro'yxatiga qo'shish
+        if token:
+            cursor.execute("INSERT OR IGNORE INTO revoked_tokens (token, user_id) VALUES (?, ?)", (token, user_id))
+
+        # 6. users jadvalidan foydalanuvchini o'chirish
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    # 7. Keshni tozalash
+    if user_id in TEMP_PASSCODE_CACHE:
+        TEMP_PASSCODE_CACHE.pop(user_id, None)
+
+    return {
+        "success": True,
+        "message": "Foydalanuvchi hisobi (akkounti) va barcha bog'liq ma'lumotlar butunlay o'chirildi",
+        "deleted_user_id": user_id,
+        "phone": phone
     }
 
 

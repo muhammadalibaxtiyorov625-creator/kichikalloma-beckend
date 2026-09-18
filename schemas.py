@@ -313,6 +313,20 @@ class ParentProfileResponse(BaseModel):
     children_count: int
     children: List[ChildResponse]
 
+class LogoutResponse(BaseModel):
+    success: bool = True
+    message: str = Field("Tizimdan muvaffaqiyatli chiqildi", description="Chiqish xabari")
+
+class DeleteAccountRequest(BaseModel):
+    passcode: Optional[str] = Field(None, example="1234", description="Tasdiqlash uchun 4 xonali parol (agar o'rnatilgan bo'lsa)")
+    reason: Optional[str] = Field(None, example="Ilovadan boshqa foydalanmayman", description="Akkountni o'chirish sababi (ixtiyoriy)")
+
+class DeleteAccountResponse(BaseModel):
+    success: bool = True
+    message: str = Field("Foydalanuvchi hisobi (akkounti) va barcha bog'liq ma'lumotlar butunlay o'chirildi", description="O'chirish xabari")
+    deleted_user_id: int = Field(..., description="O'chirilgan foydalanuvchi ID si")
+    phone: str = Field(..., description="O'chirilgan foydalanuvchi telefon raqami")
+
 # ==========================================
 # VAQT VA FAOLLIK STATISTIKASI SCHEMAS
 # ==========================================
