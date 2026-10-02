@@ -257,9 +257,9 @@ class UnlockAvatarResponse(BaseModel):
 
 
 class AddChildRequest(BaseModel):
-    name: str = Field(..., example="Ali", description="Farzand ismi")
-    surname: str = Field(..., example="Valiyev", description="Farzand familiyasi")
-    year: str = Field(..., example="15/08/2018", description="Tug'ilgan sana (DD/MM/YYYY formatda) yoki tug'ilgan yil")
+    name: Optional[str] = Field(None, example="Ali", description="Farzand ismi (ixtiyoriy)")
+    surname: Optional[str] = Field(None, example="Valiyev", description="Farzand familiyasi (ixtiyoriy)")
+    year: Optional[str] = Field(None, example="15/08/2018", description="Tug'ilgan sana (DD/MM/YYYY formatda) yoki tug'ilgan yil")
     gender: str = Field(..., example="male", description="Farzand jinsi: 'male' (o'g'il) yoki 'female' (qiz)")
     avatar: Optional[str] = Field(None, example="/images/avatars/boy1.png", description="Tanlangan avatar URL manzili, nisbiy yo'li yoki kaliti (masalan: 'boy1', 'girl2')")
 
@@ -364,6 +364,7 @@ class AiChatRequest(BaseModel):
     history: Optional[List[ChatHistoryItem]] = Field(default=[], description="Oldingi suhbat tarixi")
     child_name: Optional[str] = Field(None, example="Ali", description="Farzand ismi (ixtiyoriy)")
     child_age: Optional[int] = Field(None, example=6, description="Farzand yoshi (ixtiyoriy)")
+    child_gender: Optional[str] = Field(None, example="male", description="Farzand jinsi ('male', 'female', 'o''g''il bola', 'qiz bola')")
     planet_id: Optional[int] = Field(None, example=42, description="Sayyora ID raqami (Masalan: 42 - Kognitiv, 43 - Jismoniy, 44 - Nutq va til)")
     planet_name: Optional[str] = Field(None, example="Kognitiv", description="Sayyora nomi")
     language: Optional[str] = Field("uzb", example="uzb", description="Ovoz va javob tili: 'uzb', 'rus', 'eng'")
