@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Admin Panel | Sayyoralar, Qulayliklar, Jamoa & Galereya</title>
+  <script>
+    (function() {
+      var hn = window.location.hostname || '';
+      var proto = window.location.protocol || '';
+      var isLocal = !hn || hn === 'localhost' || hn === '127.0.0.1' || hn.startsWith('192.168.') || hn.startsWith('10.') || proto === 'file:';
+      window.API_BASE_URL = isLocal ? 'http://localhost:3000' : 'https://api.kichikalloma.uz';
+      try { localStorage.setItem('API_BASE_URL', window.API_BASE_URL); } catch(e){}
+    })();
+  </script>
   
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -460,6 +469,31 @@
             <!-- Mavzular / Kategoriyalar Ko'rinishi (Categories Grid) -->
             <div id="uran-categories-grid" class="cards-grid">
             </div>
+
+            <!-- URAN BARCHA TAYYOR STANDART RASMLAR VA ILUSTRATSIYALAR TO'PLAMI -->
+            <div class="card" style="margin-top: 28px; padding: 22px; background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px;">
+                <div>
+                  <h3 style="font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-images text-yellow"></i> Uran Uchun Tayyor Standart Rasmlar To'plami
+                  </h3>
+                  <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 0 0;">
+                    Uran sayyorasidagi mavzular va so'zlarga biriktirish uchun barcha standart tematik rasmlar (PNG / SVG)
+                  </p>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-sm btn-yellow" onclick="openUranCategoryModal()">
+                    <i class="bi bi-folder-plus"></i> Yangi Mavzu Yaratish
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="openUranWordModal()">
+                    <i class="bi bi-plus-circle"></i> Yangi So'z Qo'shish
+                  </button>
+                </div>
+              </div>
+              
+              <div id="uran-bottom-presets-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px;">
+              </div>
+            </div>
           </div>
 
           <!-- ICHKI KO'RINISH: TANLANGAN KATEGORIYA SO'ZLARI (DRILL-DOWN DETAIL VIEW) -->
@@ -510,6 +544,20 @@
 
             <!-- Words Grid inside Category -->
             <div id="uran-detail-words-grid" class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;">
+            </div>
+
+            <!-- DETAIL VIEW BOTTOM PRESETS -->
+            <div class="card" style="margin-top: 28px; padding: 20px; background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
+                <h4 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                  <i class="bi bi-palette-fill text-yellow"></i> Ushbu Mavzuga Mos Standart Tematik Rasmlar
+                </h4>
+                <button type="button" class="btn btn-sm btn-yellow" onclick="openUranWordModal(currentOpenCatId, currentOpenCatName)">
+                  <i class="bi bi-plus-lg"></i> Shu Mavzuga Yangi So'z Qo'shish
+                </button>
+              </div>
+              <div id="uran-detail-bottom-presets" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;">
+              </div>
             </div>
           </div>
 
@@ -1249,16 +1297,9 @@
             </div>
           </div>
 
-          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div class="form-group">
-              <label for="uran-cat-name-ru">Ruscha Nomi:</label>
-              <input type="text" id="uran-cat-name-ru" class="form-control" placeholder="Masalan: Космос и Планеты">
-            </div>
-            <div class="form-group">
-              <label for="uran-cat-order">Tartib Raqami:</label>
-              <input type="number" id="uran-cat-order" class="form-control" placeholder="1, 2, 3..." value="0">
-            </div>
-          </div>
+          <input type="hidden" id="uran-cat-name-ru" value="">
+
+          <input type="hidden" id="uran-cat-order" value="0">
 
           <div class="form-group">
             <label for="uran-cat-desc">Mavzu Tavsifi:</label>
@@ -1365,19 +1406,23 @@
             </div>
           </div>
 
-          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
-              <label for="uran-word-ru">Ruscha Tarjima:</label>
-              <input type="text" id="uran-word-ru" class="form-control" placeholder="Masalan: Клубника">
+              <label for="uran-word-ru">🇷🇺 Ruscha Tarjima (Русский): <span class="required">*</span></label>
+              <input type="text" id="uran-word-ru" class="form-control" placeholder="Masalan: Клубника" required>
             </div>
+
             <div class="form-group">
-              <label for="uran-word-transcription">Transkripsiya (Talaffuz):</label>
+              <label for="uran-word-transcription">🗣️ Transkripsiya (Talaffuz):</label>
               <input type="text" id="uran-word-transcription" class="form-control" placeholder="Masalan: [ˈstrɔː.bər.i]">
             </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr; gap: 12px;">
             <div class="form-group">
-              <label for="uran-word-pos">So'z Turkumi: <span class="required">*</span></label>
+              <label for="uran-word-pos">🏷️ So'z turkumi (Grammatika):</label>
               <select id="uran-word-pos" class="form-control" style="background: rgba(15, 23, 42, 0.8);">
-                <option value="noun" selected>Ot (Noun)</option>
+                <option value="noun">Ot (Noun)</option>
                 <option value="adjective">Sifat (Adjective)</option>
                 <option value="verb">Fe'l (Verb)</option>
                 <option value="adverb">Ravish (Adverb)</option>
@@ -1399,14 +1444,36 @@
             </div>
           </div>
 
-          <div class="form-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
-            <div class="form-group">
-              <label for="uran-word-image">Maxsus Rasm URL (bo'sh qolsa kategoriya rasmi olinadi):</label>
-              <input type="text" id="uran-word-image" class="form-control" placeholder="/images/categories/fruits.png">
-            </div>
-            <div class="form-group">
-              <label for="uran-word-order">Tartib Raqami:</label>
-              <input type="number" id="uran-word-order" class="form-control" value="0" placeholder="1, 2, 3...">
+          <input type="hidden" id="uran-word-order" value="0">
+
+          <!-- So'z Rasmi (Fayl yuklash) -->
+          <div class="form-group" style="background: rgba(15, 23, 42, 0.65); border: 2px dashed rgba(234, 179, 8, 0.4); border-radius: 12px; padding: 18px; text-align: center;">
+            <input type="hidden" id="uran-word-image" value="">
+            <input type="file" id="uran-word-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display: none;" onchange="handleUploadUranWordImage(this)">
+            
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+              <div style="width: 76px; height: 76px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden;">
+                <img id="uran-word-preview-img" src="images/categories/fruits.png" alt="Preview" style="max-height: 64px; max-width: 64px; object-fit: contain;">
+              </div>
+              
+              <div>
+                <div id="uran-word-img-preview-label" style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px;">Rasm yuklanmagan (mavzu rasmi olinadi)</div>
+                <div id="uran-word-upload-status" style="font-size: 12px; margin-bottom: 10px;"></div>
+                
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-yellow" onclick="document.getElementById('uran-word-file-input').click()" style="padding: 9px 18px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;">
+                    <i class="bi bi-cloud-arrow-up-fill" style="font-size: 16px;"></i> Kompyuterdan Rasm Yuklash
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="clearUranWordImage()" style="padding: 9px 14px; font-size: 13px;" title="Rasmni tozalash">
+                    <i class="bi bi-trash"></i> Tozalash
+                  </button>
+                </div>
+              </div>
+
+              <div style="margin-top: 8px; width: 100%; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+                <span style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Yoki tematik rasmlardan birini tanlang:</span>
+                <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;" id="uran-word-preset-images"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1734,7 +1801,7 @@
     <!-- Three.js & 3D Cosmic Particle Engine -->
   <script src="js/three.min.js"></script>
   <script src="js/cosmic-3d.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=1792755963"></script>
 
   <!-- =============== ADMIN LOGIN LOGIC =============== -->
   <script>

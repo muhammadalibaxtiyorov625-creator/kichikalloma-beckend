@@ -268,17 +268,13 @@ def init_db():
             initial_teams
         )
 
-        # 5. Boshlang'ich Galereya rasmlari (Gallery)
-        initial_gallery = [
-            ('Interaktiv Dars Jarayoni', '/images/gallery/photo1.svg'),
-            ('Mantiqiy O\'yinlar Mashg\'uloti', '/images/gallery/photo2.svg'),
-            ('Ijodkorlik & San\'at To\'garagi', '/images/gallery/photo3.svg'),
-            ('Rivojlanish Sayyoralari Ko\'rgazmasi', '/images/gallery/photo4.svg')
-        ]
-        cursor.executemany(
-            "INSERT INTO gallery (title, image) VALUES (?, ?)",
-            initial_gallery
-        )
+        # 5. Boshlang'ich Galereya rasmlari (Gallery) - Bo'sh
+        initial_gallery = []
+        if initial_gallery:
+            cursor.executemany(
+                "INSERT INTO gallery (title, image) VALUES (?, ?)",
+                initial_gallery
+            )
 
         cursor.execute("INSERT OR REPLACE INTO system_meta (key, value) VALUES ('seeded', '1')")
 

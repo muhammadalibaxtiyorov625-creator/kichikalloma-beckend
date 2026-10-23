@@ -1,11 +1,22 @@
 // ==========================================================================
 // STANDALONE ADMIN PANEL API ROUTER & CONFIGURATION
 // ==========================================================================
-const API_BASE_URL = (
-  (typeof window !== 'undefined' && window.API_BASE_URL) ||
-  (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE_URL')) ||
-  ((typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ? 'http://127.0.0.1:3000' : 'https://api.kichikalloma.uz')
-).replace(/\/+$/, '');
+function resolveApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    if (window.API_BASE_URL) return window.API_BASE_URL;
+    const hn = window.location.hostname || '';
+    const proto = window.location.protocol || '';
+    if (!hn || hn === 'localhost' || hn === '127.0.0.1' || hn.startsWith('192.168.') || hn.startsWith('10.') || proto === 'file:') {
+      return 'http://localhost:3000';
+    }
+    if (hn === 'admin.kichikalloma.uz' || hn === 'kichikalloma.uz') {
+      return 'https://api.kichikalloma.uz';
+    }
+    return 'http://localhost:3000';
+  }
+  return 'http://localhost:3000';
+}
+const API_BASE_URL = resolveApiBaseUrl().replace(/\/+$/, '');
 
 window.API_BASE_URL = API_BASE_URL;
 
@@ -41,22 +52,38 @@ window.normalizeImageUrl = function (url, fallback = '') {
   return window.toFullMediaUrl(url, fallback);
 };
 
-// Global fetch interceptor: forwards relative /api/ and /mobile/ calls to API_BASE_URL
+// Global fetch interceptor: forwards relative /api/ and /mobile/ calls to API_BASE_URL with fallback
 (function () {
   const _origFetch = window.fetch;
-  window.fetch = function (input, init) {
+  window.fetch = async function (input, init) {
+    let url = input;
     if (typeof input === 'string') {
       if (input.startsWith('/api/') || input.startsWith('/mobile/')) {
-        input = API_BASE_URL + input;
+        url = API_BASE_URL + input;
       }
     } else if (input && typeof input.url === 'string') {
       if (input.url.startsWith('/api/') || input.url.startsWith('/mobile/')) {
         try {
           input = new Request(API_BASE_URL + input.url, input);
+          url = input.url;
         } catch (e) {}
       }
     }
-    return _origFetch.call(this, input, init);
+    try {
+      return await _origFetch.call(this, typeof input === 'string' ? url : input, init);
+    } catch (err) {
+      if (typeof url === 'string') {
+        let altUrl = null;
+        if (url.includes('localhost:3000')) altUrl = url.replace('localhost:3000', '127.0.0.1:3000');
+        else if (url.includes('127.0.0.1:3000')) altUrl = url.replace('127.0.0.1:3000', 'localhost:3000');
+        if (altUrl) {
+          try {
+            return await _origFetch.call(this, altUrl, init);
+          } catch (e2) {}
+        }
+      }
+      throw err;
+    }
   };
 })();
 
@@ -2441,7 +2468,7 @@ function renderUranCategories() {
     return;
   }
 
-  container.innerHTML = filtered.map(cat => {
+  const cardsHtml = filtered.map(cat => {
     const isActive = (cat.status === 'active');
     const statusBadge = isActive 
       ? `<span class="badge" style="position: absolute; top: 8px; left: 8px; background: rgba(16, 185, 129, 0.25); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.5); font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><i class="bi bi-unlock-fill"></i> #${cat.order_num || 0} Faol</span>`
@@ -2491,6 +2518,22 @@ function renderUranCategories() {
     </div>
   `;
   }).join('');
+
+  const addCategoryCardHtml = `
+    <div class="card add-category-card" onclick="openUranCategoryModal()" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; border: 2px dashed rgba(234, 179, 8, 0.45); border-radius: 14px; background: rgba(30, 41, 59, 0.35); cursor: pointer; text-align: center; padding: 24px; transition: all 0.2s ease;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(234, 179, 8, 0.15); color: #eab308; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px; border: 1px solid rgba(234, 179, 8, 0.3);">
+        <i class="bi bi-folder-plus"></i>
+      </div>
+      <h4 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px 0;">Yangi Mavzu Qo'shish</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 14px 0; line-height: 1.4;">Yangi lug'at mavzusi, rasm va so'zlar kiritish</p>
+      <span class="btn btn-sm btn-yellow" style="padding: 6px 14px; font-size: 12px; font-weight: 700; pointer-events: none;">
+        <i class="bi bi-plus-lg"></i> Mavzu Yaratish
+      </span>
+    </div>
+  `;
+
+  container.innerHTML = cardsHtml + addCategoryCardHtml;
+  renderUranBottomPresetsGallery();
 }
 
 // ------------------------------------------------------------------------------
@@ -2596,7 +2639,7 @@ function renderUranDetailWords() {
     return;
   }
 
-  grid.innerHTML = words.map((w, idx) => {
+  const wordsHtml = words.map((w, idx) => {
     const safeWordEn = escapeHtml(w.word_en || '');
     const pos = (w.part_of_speech || 'noun').toLowerCase();
     const posUz = w.part_of_speech_uz || (pos === 'adjective' ? 'Sifat' : (pos === 'verb' ? "Fe'l" : (pos === 'adverb' ? 'Ravish' : 'Ot')));
@@ -2650,11 +2693,13 @@ function renderUranDetailWords() {
                 </button>
               </div>
 
-              <div style="margin-top: 4px; line-height: 1.3;">
+              <div style="margin-top: 4px; line-height: 1.4;">
                 <p style="margin: 0; font-size: 15px; font-weight: 800; color: #38bdf8;">
                   🇺🇿 ${escapeHtml(w.word_uz || '')}
                 </p>
-                ${w.word_ru ? `<p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">🇷🇺 ${escapeHtml(w.word_ru)}</p>` : ''}
+                <p style="margin: 2px 0 0 0; font-size: 13px; font-weight: 600; color: #cbd5e1;">
+                  🇷🇺 ${escapeHtml(w.word_ru || 'Kiritilmagan')}
+                </p>
               </div>
             </div>
           </div>
@@ -2678,6 +2723,22 @@ function renderUranDetailWords() {
       </div>
     `;
   }).join('');
+
+  const addWordCardHtml = `
+    <div class="card add-word-card" onclick="openUranWordModal(${currentOpenCatId}, '${escapeHtml(currentOpenCatName)}')" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; border: 2px dashed rgba(99, 102, 241, 0.45); border-radius: 12px; background: rgba(30, 41, 59, 0.35); cursor: pointer; text-align: center; padding: 20px; transition: all 0.2s ease;">
+      <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(99, 102, 241, 0.15); color: #818cf8; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px; border: 1px solid rgba(99, 102, 241, 0.3);">
+        <i class="bi bi-plus-lg"></i>
+      </div>
+      <h4 style="font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 4px 0;">Yangi So'z Qo'shish</h4>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 12px 0;">"${escapeHtml(currentOpenCatName)}" mavzusiga so'z kiritish</p>
+      <span class="btn btn-sm btn-yellow" style="padding: 5px 12px; font-size: 11px; font-weight: 700; pointer-events: none;">
+        <i class="bi bi-plus-circle-fill"></i> + So'z Qo'shish
+      </span>
+    </div>
+  `;
+
+  grid.innerHTML = wordsHtml + addWordCardHtml;
+  renderUranDetailBottomPresets();
 }
 
 // ------------------------------------------------------------------------------
@@ -2924,13 +2985,26 @@ async function handleSaveUranCategory(event) {
       throw new Error(errData.detail || "Kategoriyani saqlashda xatolik yuz berdi");
     }
 
-    showToast(catId ? `"${name}" kategoriyasi muvaffaqiyatli yangilandi!` : `Yangi "${name}" kategoriyasi yaratildi! ✅`, "success");
+    let createdCat = null;
+    try {
+      createdCat = await res.json();
+    } catch (e) {}
+
+    showToast(catId ? `"${name}" kategoriyasi muvaffaqiyatli yangilandi!` : `Yangi "${name}" kategoriyasi yaratildi! Endi unga so'zlar qo'shishingiz mumkin ✅`, "success");
     closeUranCategoryModal();
 
     await fetchUranCategories();
 
-    // If inside detail view of this category, refresh header
-    if (currentOpenCatId && String(currentOpenCatId) === String(catId)) {
+    // Agar yangi kategoriya yaratilgan bo'lsa, avtomatik uning ichiga kirib, yangi so'z qo'shish modalini ochamiz
+    if (!catId) {
+      const newId = (createdCat && createdCat.id) || (uranCategoriesList.find(c => c.name === name)?.id);
+      if (newId) {
+        await openUranCategoryDetail(newId);
+        setTimeout(() => {
+          openUranWordModal(newId, name);
+        }, 350);
+      }
+    } else if (currentOpenCatId && String(currentOpenCatId) === String(catId)) {
       currentOpenCatName = name;
       const titleEl = document.getElementById('uran-detail-title');
       const subEl = document.getElementById('uran-detail-subtitle');
@@ -3001,6 +3075,122 @@ function handleDeleteCurrentWordFromModal() {
 }
 
 // ------------------------------------------------------------------------------
+// URAN SO'ZLAR RASMI (PREVIEW / UPLOAD / PRESETS)
+// ------------------------------------------------------------------------------
+
+function updateUranWordImagePreview(path) {
+  const clean = path ? normalizeImageUrl(path, 'images/categories/fruits.png') : '';
+  const previewImg = document.getElementById('uran-word-preview-img');
+  const previewLabel = document.getElementById('uran-word-img-preview-label');
+  if (previewImg) {
+    if (clean) {
+      previewImg.src = clean;
+      previewImg.onerror = function() { this.onerror = null; this.src = 'images/categories/fruits.png'; };
+    } else {
+      const catImg = (currentCatDetailData && currentCatDetailData.image) 
+        ? normalizeImageUrl(currentCatDetailData.image, 'images/categories/fruits.png') 
+        : 'images/categories/fruits.png';
+      previewImg.src = catImg;
+    }
+  }
+  if (previewLabel) {
+    if (clean) {
+      const parts = clean.split('/');
+      previewLabel.innerText = parts[parts.length - 1] || 'Maxsus rasm';
+      previewLabel.style.color = '#38bdf8';
+    } else {
+      previewLabel.innerText = "Kategoriya rasmi olinadi";
+      previewLabel.style.color = '#94a3b8';
+    }
+  }
+}
+
+async function handleUploadUranWordImage(input) {
+  let file = input.files && input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('uran-word-upload-status');
+  if (statusEl) statusEl.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Yuklanmoqda...`;
+
+  try {
+    if (file.type && file.type.startsWith('image/') && file.size > 950 * 1024) {
+      if (typeof compressImageIfNeeded === 'function') {
+        file = await compressImageIfNeeded(file);
+      }
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/website/uran/upload-image', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      let errMsg = "Rasm yuklashda xatolik";
+      try {
+        const err = await res.json();
+        errMsg = err.detail || errMsg;
+      } catch (e) {
+        errMsg = `Server xatoligi: ${res.status}`;
+      }
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    const uploadedUrl = data.relative_url || data.url;
+    const imgInput = document.getElementById('uran-word-image');
+    if (imgInput) imgInput.value = uploadedUrl;
+    updateUranWordImagePreview(uploadedUrl);
+    renderUranWordPresetImages(uploadedUrl);
+    if (statusEl) statusEl.innerHTML = `<span style="color: #10b981; font-weight: 700;">✅ ${file.name}</span>`;
+    showToast("So'z rasmi muvaffaqiyatli yuklandi!", "success");
+  } catch (err) {
+    console.error("handleUploadUranWordImage error:", err);
+    if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">❌ Xatolik</span>`;
+    showToast(err.message || "Rasm yuklashda xatolik", "error");
+  } finally {
+    input.value = '';
+  }
+}
+
+function selectUranWordPresetImage(path) {
+  const input = document.getElementById('uran-word-image');
+  if (input) input.value = path;
+  updateUranWordImagePreview(path);
+  renderUranWordPresetImages(path);
+}
+
+function clearUranWordImage() {
+  const input = document.getElementById('uran-word-image');
+  if (input) input.value = '';
+  const fileInput = document.getElementById('uran-word-file-input');
+  if (fileInput) fileInput.value = '';
+  const statusEl = document.getElementById('uran-word-upload-status');
+  if (statusEl) statusEl.innerText = '';
+  updateUranWordImagePreview('');
+  renderUranWordPresetImages('');
+}
+
+function renderUranWordPresetImages(activePath) {
+  const container = document.getElementById('uran-word-preset-images');
+  if (!container) return;
+  container.innerHTML = PRESET_URAN_CATEGORY_IMAGES.map(p => {
+    const isSelected = activePath && activePath.includes(p.name);
+    const pSrc = normalizeImageUrl(p.path, 'images/categories/' + p.name);
+    return `
+      <button type="button" class="btn btn-sm ${isSelected ? 'btn-yellow' : 'btn-secondary'}" 
+        style="padding: 3px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; cursor: pointer;" 
+        onclick="selectUranWordPresetImage('${p.path}')">
+        <img src="${escapeHtml(pSrc)}" alt="${p.label}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.onerror=null; this.src='images/categories/${p.name}';">
+        <span>${p.label}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+// ------------------------------------------------------------------------------
 // URAN SO'ZLAR BOSHQARUVI (ADD / EDIT / DELETE)
 // ------------------------------------------------------------------------------
 
@@ -3028,6 +3218,8 @@ function openUranWordModal(categoryId = null, categoryName = null, wordId = null
     catSelect.value = String(targetCatId);
   }
 
+  let existingImg = '';
+
   if (wordId) {
     const item = uranWordsList.find(w => w.id === wordId) || (currentCatDetailData && currentCatDetailData.words ? currentCatDetailData.words.find(w => w.id === wordId) : null);
     if (item) {
@@ -3039,16 +3231,34 @@ function openUranWordModal(categoryId = null, categoryName = null, wordId = null
       if (document.getElementById('uran-word-pos')) document.getElementById('uran-word-pos').value = item.part_of_speech || 'noun';
       if (document.getElementById('uran-word-example')) document.getElementById('uran-word-example').value = item.example_sentence || '';
       if (document.getElementById('uran-word-example-uz')) document.getElementById('uran-word-example-uz').value = item.example_translation || '';
-      if (document.getElementById('uran-word-image')) document.getElementById('uran-word-image').value = item.image || '';
+      existingImg = item.image || '';
+      if (document.getElementById('uran-word-image')) document.getElementById('uran-word-image').value = existingImg;
       if (document.getElementById('uran-word-order')) document.getElementById('uran-word-order').value = item.order_num || 0;
       if (titleEl) titleEl.innerHTML = `<i class="bi bi-pencil-square text-yellow"></i> "${escapeHtml(item.word_en)}" So'zini Tahrirlash`;
       if (deleteBtn) deleteBtn.style.display = 'inline-flex';
     }
   } else {
+    if (document.getElementById('uran-word-en')) document.getElementById('uran-word-en').value = '';
+    if (document.getElementById('uran-word-uz')) document.getElementById('uran-word-uz').value = '';
+    if (document.getElementById('uran-word-ru')) document.getElementById('uran-word-ru').value = '';
+    if (document.getElementById('uran-word-transcription')) document.getElementById('uran-word-transcription').value = '';
+    if (document.getElementById('uran-word-example')) document.getElementById('uran-word-example').value = '';
+    if (document.getElementById('uran-word-example-uz')) document.getElementById('uran-word-example-uz').value = '';
     if (document.getElementById('uran-word-pos')) document.getElementById('uran-word-pos').value = 'noun';
+    if (document.getElementById('uran-word-image')) document.getElementById('uran-word-image').value = '';
+    let nextOrder = 1;
+    if (currentCatDetailData && currentCatDetailData.words && currentCatDetailData.words.length > 0) {
+      nextOrder = currentCatDetailData.words.length + 1;
+    }
+    if (document.getElementById('uran-word-order')) document.getElementById('uran-word-order').value = nextOrder;
     if (titleEl) titleEl.innerHTML = `<i class="bi bi-plus-circle text-yellow"></i> Yangi So'z Qo'shish`;
     if (deleteBtn) deleteBtn.style.display = 'none';
   }
+
+  const statusEl = document.getElementById('uran-word-upload-status');
+  if (statusEl) statusEl.innerHTML = existingImg ? '<span style="color: #38bdf8; font-weight:600;">📷 Maxsus rasm yuklangan</span>' : '';
+  updateUranWordImagePreview(existingImg);
+  renderUranWordPresetImages(existingImg);
 
   if (catLabel) {
     const selectedCatObj = uranCategoriesList.find(c => String(c.id) === String(targetCatId));
@@ -3074,6 +3284,33 @@ function closeUranWordModal() {
   }
 }
 
+function autoDetectPartOfSpeech(wordEn, wordUz) {
+  if (!wordEn) return 'noun';
+  const w = wordEn.trim().toLowerCase();
+  const uz = (wordUz || '').trim().toLowerCase();
+
+  // Fe'l (Verb)
+  if (w.startsWith('to ') || uz.endsWith('moq') || uz.endsWith('moqda')) {
+    return 'verb';
+  }
+
+  // Sifat (Adjective)
+  const adjList = ['red', 'blue', 'green', 'yellow', 'black', 'white', 'orange', 'pink', 'purple', 
+                   'big', 'small', 'tall', 'short', 'hot', 'cold', 'warm', 'cool', 'sweet', 'sour', 
+                   'fast', 'slow', 'happy', 'sad', 'good', 'bad', 'clean', 'dirty', 'new', 'old'];
+  if (adjList.includes(w) || w.endsWith('ful') || w.endsWith('less') || w.endsWith('ous') || w.endsWith('ive') || w.endsWith('able')) {
+    return 'adjective';
+  }
+
+  // Ravish (Adverb)
+  if (w.endsWith('ly') && w.length > 3 && !['family', 'early', 'friendly'].includes(w)) {
+    return 'adverb';
+  }
+
+  // Standart bolalar lug'ati: Ot (Noun)
+  return 'noun';
+}
+
 async function handleSaveUranWord(event) {
   event.preventDefault();
   const wordId = document.getElementById('uran-word-id') ? document.getElementById('uran-word-id').value : '';
@@ -3081,10 +3318,13 @@ async function handleSaveUranWord(event) {
   const categoryId = catSelect ? catSelect.value : (currentOpenCatId || 1);
   const word_en = document.getElementById('uran-word-en').value.trim();
   const word_uz = document.getElementById('uran-word-uz').value.trim();
-  const word_ru = document.getElementById('uran-word-ru').value.trim();
+  const word_ru = document.getElementById('uran-word-ru') ? document.getElementById('uran-word-ru').value.trim() : '';
   const transcription = document.getElementById('uran-word-transcription').value.trim();
   const posSelect = document.getElementById('uran-word-pos');
-  const part_of_speech = posSelect ? posSelect.value : 'noun';
+  let part_of_speech = posSelect ? (posSelect.value || 'noun') : 'noun';
+  if (!part_of_speech || part_of_speech === 'noun') {
+    part_of_speech = autoDetectPartOfSpeech(word_en, word_uz);
+  }
   const posUzMap = {
     'noun': 'Ot',
     'adjective': 'Sifat',
@@ -3098,7 +3338,10 @@ async function handleSaveUranWord(event) {
   const example_sentence = document.getElementById('uran-word-example').value.trim();
   const example_translation = document.getElementById('uran-word-example-uz').value.trim();
   const image = document.getElementById('uran-word-image') ? document.getElementById('uran-word-image').value.trim() : '';
-  const order_num = document.getElementById('uran-word-order') ? parseInt(document.getElementById('uran-word-order').value, 10) || 0 : 0;
+  let order_num = document.getElementById('uran-word-order') ? parseInt(document.getElementById('uran-word-order').value, 10) || 0 : 0;
+  if (!order_num && currentCatDetailData && currentCatDetailData.words && currentCatDetailData.words.length > 0) {
+    order_num = currentCatDetailData.words.length + 1;
+  }
 
   if (!categoryId) {
     showToast("Iltimos, so'z tegishli bo'lgan mavzuni (kategoriyani) tanlang!", "error");
@@ -3991,6 +4234,11 @@ window.handleSaveUranWord = handleSaveUranWord;
 window.handleDeleteUranWord = handleDeleteUranWord;
 window.handleAiSuggestWord = handleAiSuggestWord;
 window.playWordAudio = playWordAudio;
+window.updateUranWordImagePreview = updateUranWordImagePreview;
+window.handleUploadUranWordImage = handleUploadUranWordImage;
+window.selectUranWordPresetImage = selectUranWordPresetImage;
+window.clearUranWordImage = clearUranWordImage;
+window.renderUranWordPresetImages = renderUranWordPresetImages;
 window.openFaqModal = openFaqModal;
 window.closeFaqModal = closeFaqModal;
 window.handleSaveFaq = handleSaveFaq;
@@ -4029,3 +4277,85 @@ window.downloadBookVideo = downloadBookVideo;
 window.downloadBookAudio = downloadBookAudio;
 window.playBookAudio = playBookAudio;
 
+
+function renderUranBottomPresetsGallery() {
+  const container = document.getElementById('uran-bottom-presets-gallery');
+  if (!container) return;
+
+  container.innerHTML = PRESET_URAN_CATEGORY_IMAGES.map(p => {
+    const pSrc = normalizeImageUrl(p.path, 'images/categories/' + p.name);
+    return `
+      <div class="preset-gallery-item" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; transition: transform 0.2s ease, border-color 0.2s ease;">
+        <div style="width: 58px; height: 58px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; padding: 6px;">
+          <img src="${escapeHtml(pSrc)}" alt="${p.label}" style="max-width: 46px; max-height: 46px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));" onerror="this.onerror=null; this.src='images/categories/${p.name}';">
+        </div>
+        <div style="font-size: 13px; font-weight: 800; color: #fff; margin-top: 2px;">${escapeHtml(p.label)}</div>
+        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${escapeHtml(p.name)}</div>
+        
+        <div style="display: flex; gap: 4px; width: 100%; margin-top: 6px;">
+          <button type="button" class="btn btn-sm btn-yellow" style="flex: 1; padding: 4px 6px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 3px;" onclick="openUranCategoryModalWithImage('${p.path}')" title="Shu rasm bilan yangi mavzu ochish">
+            <i class="bi bi-folder-plus"></i> Mavzu
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" style="flex: 1; padding: 4px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 3px;" onclick="openUranWordModalWithImage('${p.path}')" title="Shu rasm bilan yangi so'z qo'shish">
+            <i class="bi bi-plus-lg"></i> So'z
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" style="padding: 4px 7px; font-size: 11px;" onclick="copyPresetPath('${p.path}')" title="Rasm yo'lini nusxalash">
+            <i class="bi bi-copy"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderUranDetailBottomPresets() {
+  const container = document.getElementById('uran-detail-bottom-presets');
+  if (!container) return;
+
+  container.innerHTML = PRESET_URAN_CATEGORY_IMAGES.map(p => {
+    const pSrc = normalizeImageUrl(p.path, 'images/categories/' + p.name);
+    return `
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; display: flex; align-items: center; gap: 8px;">
+        <img src="${escapeHtml(pSrc)}" alt="${p.label}" style="width: 28px; height: 28px; object-fit: contain;" onerror="this.onerror=null; this.src='images/categories/${p.name}';">
+        <div style="font-size: 12px; font-weight: 700; color: #fff;">${escapeHtml(p.label)}</div>
+        <button type="button" class="btn btn-sm btn-yellow" style="padding: 3px 8px; font-size: 10px; margin-left: auto;" onclick="openUranWordModalWithImage('${p.path}')">
+          <i class="bi bi-plus"></i> So'z
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function openUranCategoryModalWithImage(imagePath) {
+  openUranCategoryModal();
+  const input = document.getElementById('uran-cat-image');
+  if (input) input.value = imagePath;
+  updateUranCatImagePreview(imagePath);
+  renderUranPresetImages(imagePath);
+}
+
+function openUranWordModalWithImage(imagePath) {
+  openUranWordModal(currentOpenCatId, currentOpenCatName);
+  const input = document.getElementById('uran-word-image');
+  if (input) input.value = imagePath;
+  updateUranWordImagePreview(imagePath);
+  renderUranWordPresetImages(imagePath);
+}
+
+function copyPresetPath(path) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(path).then(() => {
+      showToast(`Rasm manzili nusxalandi: ${path}`, 'success');
+    }).catch(() => {
+      showToast(`Rasm manzili: ${path}`, 'info');
+    });
+  } else {
+    showToast(`Rasm manzili: ${path}`, 'info');
+  }
+}
+
+window.renderUranBottomPresetsGallery = renderUranBottomPresetsGallery;
+window.renderUranDetailBottomPresets = renderUranDetailBottomPresets;
+window.openUranCategoryModalWithImage = openUranCategoryModalWithImage;
+window.openUranWordModalWithImage = openUranWordModalWithImage;
+window.copyPresetPath = copyPresetPath;
