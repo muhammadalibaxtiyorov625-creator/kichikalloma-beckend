@@ -1,1 +1,13 @@
-run.batdatabase.sqlite
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+env/
+venv/
+run.bat
+database.sqlite
+public/audio_cache/*.mp3
+!public/audio_cache/welcome_*.mp3
+check_chat_hist.py
+'aliali'/

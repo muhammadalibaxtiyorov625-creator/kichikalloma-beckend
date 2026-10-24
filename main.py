@@ -430,9 +430,20 @@ async def custom_global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Server ichki xatoligi", "error": str(exc), "success": False}
     )
 
+
+# ─── YANGI MODULLI AI VA MONITORING ROUTERLARI ──────────────────────────────
+from routers.child_ai_router import router as child_ai_router
+from routers.parent_monitoring_router import router as parent_monitoring_router
+from routers.child_navigation_router import router as child_navigation_router
+
+app.include_router(child_ai_router, prefix="/api/alloma-ai", tags=["Alloma Yangi AI Tizimi"])
+app.include_router(parent_monitoring_router, prefix="/api/parent-monitoring", tags=["Ota-Ona Monitoringi & Tahlil"])
+app.include_router(child_navigation_router, prefix="/api/child-navigation", tags=["Farzand Navigatsiyasi & Nazorati"])
+
 # Statik fayllarni ulash
 BASE_DIR = os.path.dirname(__file__)
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+WEBSITE_PUBLIC_DIR = os.path.join(os.path.dirname(BASE_DIR), "kichikalloma-website") if os.path.exists(os.path.join(os.path.dirname(BASE_DIR), "kichikalloma-website")) else PUBLIC_DIR
 UPLOADS_DIR = os.path.join(PUBLIC_DIR, "images", "uploads")
 AUDIO_CACHE_DIR = os.path.join(PUBLIC_DIR, "audio_cache")
 VIDEOS_DIR = os.path.join(PUBLIC_DIR, "videos")
@@ -6301,11 +6312,11 @@ async def generate_edge_tts_audio(text: str, lang: str = "uzb", request: Request
             rate_val = "+0%"
             volume_val = "+25%"
         else:
-            # O'zbek tili: qiz bola bo'lsa Madina, o'g'il bola bo'lsa Sardor
-            voice = "uz-UZ-MadinaNeural" if voice_type == "female" else "uz-UZ-SardorNeural"
-            pitch_val = "+6Hz"
-            rate_val = "+10%"
-            volume_val = "+50%"
+            # O'zbek tili: Alloma Bilag'on yoqimli va tabiiy ovozi (MadinaNeural)
+            voice = "uz-UZ-MadinaNeural"
+            pitch_val = "+0Hz"
+            rate_val = "+0%"
+            volume_val = "+25%"
 
         hash_key = hashlib.md5(f"{voice}:{pitch_val}:{rate_val}:{volume_val}:{clean_text}".encode('utf-8')).hexdigest()
         filename = f"{hash_key}.mp3"
@@ -8257,6 +8268,26 @@ async def _build_ai_response(req: AiChatRequest, user_prompt: str, request: Requ
         except Exception:
             pass
 
+    # 6.9 YANGI RESILIENT LLM PIPELINE (Groq Qwen 27B / Gemini / Claude)
+    if not ai_text:
+        try:
+            from ai_core.llm_engine import generate_llm_response
+            from ai_core.web_search import is_search_needed, search_google_web
+            
+            enhanced_sys = system_instruction
+            if is_search_needed(user_prompt):
+                s_res = search_google_web(user_prompt, max_results=3)
+                if s_res:
+                    enhanced_sys += f"\n\nINTERNET VA YOUTUBE QIDIRUV NATIJALARI (Haqiqiy linklar):\n{s_res}\nKo'rsatma: Bolaga mavzuni qiziq tushuntirib, ushbu haqiqiy havolalarni bergin!"
+            
+            msgs = [{"role": "user", "content": user_prompt}]
+            fast_reply, used_llm = await generate_llm_response(msgs, enhanced_sys, child_name="bolajon")
+            if fast_reply and len(fast_reply.strip()) > 5:
+                ai_text = fast_reply.replace("**", "").replace("##", "").replace("###", "").replace("*", "")
+                used_model = f"alloma-{used_llm.lower().replace(' ', '-')}"
+        except Exception as e:
+            print(f"[Fast LLM Engine in main.py Error]: {e}")
+
     # 7. Agar mavzuli bilimlar ichida bo'lmasa -> Gemini API (Tezkor 3 soniyalik timeout)
     if not ai_text and GEMINI_API_KEY:
         try:
@@ -8622,7 +8653,7 @@ async def mobile_ai_voice_chat_get(request: Request):
         .msg-row {
             display: flex;
             gap: 10px;
-            max-width: 88%;
+            max-width: 95%;
         }
         .msg-row.user {
             align-self: flex-end;
@@ -8644,24 +8675,192 @@ async def mobile_ai_voice_chat_get(request: Request):
             border: 1px solid rgba(255,255,255,0.1);
         }
         .msg-bubble {
-            padding: 10px 14px;
-            border-radius: 14px;
-            font-size: 14px;
-            line-height: 1.5;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            line-height: 1.55;
             word-break: break-word;
+            width: 100%;
         }
         .msg-row.user .msg-bubble {
             background: linear-gradient(135deg, #0284c7, #2563eb);
             color: white;
             border-bottom-right-radius: 4px;
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            width: auto;
         }
         .msg-row.ai .msg-bubble {
             background: #1e293b;
             color: #f1f5f9;
             border-bottom-left-radius: 4px;
-            border: 1px solid rgba(148, 163, 184, 0.15);
+            border: 1px solid rgba(148, 163, 184, 0.2);
             box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+        }
+
+        /* Tavsiya va Qidiruv Kartochkalari (Tartiblangan bloklar) */
+        .chat-text-para {
+            margin: 0 0 8px 0;
+            line-height: 1.55;
+            font-size: 14.5px;
+            color: inherit;
+        }
+        .chat-text-para:last-child {
+            margin-bottom: 0;
+        }
+        .chat-rec-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1.5px solid rgba(56, 189, 248, 0.3);
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin: 8px 0;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+        .chat-rec-card:hover {
+            border-color: rgba(56, 189, 248, 0.6);
+            transform: translateY(-2px);
+        }
+        .chat-rec-card.standalone {
+            border-color: rgba(129, 140, 248, 0.35);
+        }
+        .chat-rec-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .chat-rec-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            min-width: 26px;
+            background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+            color: #ffffff;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 800;
+            margin-top: 1px;
+        }
+        .chat-rec-badge.bullet-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .chat-rec-title-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+            min-width: 0;
+        }
+        .chat-rec-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.35;
+        }
+        .chat-rec-desc {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        .chat-rec-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        /* Katta Bosiladigan Tugmalar (USTIGA BOSMA) */
+        .chat-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            text-decoration: none !important;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+            user-select: none;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1.5px solid transparent;
+        }
+        .chat-action-btn:hover {
+            transform: translateY(-2px) scale(1.01);
+            text-decoration: none !important;
+        }
+        .chat-action-btn:active {
+            transform: translateY(0) scale(0.99);
+        }
+        .chat-action-btn.yt-btn {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(255, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .chat-action-btn.yt-btn:hover {
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.65);
+            filter: brightness(1.1);
+        }
+        .chat-action-btn.wiki-btn {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+        }
+        .chat-action-btn.web-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        }
+        .btn-left-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        .btn-media-icon {
+            font-size: 20px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .btn-text-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            text-align: left;
+            min-width: 0;
+        }
+        .btn-action-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-action-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-arrow-icon {
+            font-size: 14px;
+            font-weight: 900;
+            color: #ffffff;
+            flex-shrink: 0;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
         }
         .audio-replay-btn {
             display: inline-flex;
@@ -8895,6 +9094,232 @@ async def mobile_ai_voice_chat_get(request: Request):
             } catch (e) {}
         }
 
+        function createActionButton(url, titleText = "") {
+            let cleanUrl = url.trim().replace(/[.,!?)]+$/, '');
+            let btnClass = 'web-btn';
+            let icon = '🌐';
+            let actionTitle = titleText ? titleText.trim() : "";
+            let subtitle = 'Havola ustiga bosing';
+
+            try {
+                const parsed = new URL(cleanUrl);
+                subtitle = parsed.hostname.replace(/^www\./, '');
+            } catch(e) {}
+
+            const isGeneric = !actionTitle || 
+                /^(bu yerni bos|bosing|link|havola|shu yerda|bu yerda|ko'rish|batafsil|bu yer|bosish)$/i.test(actionTitle);
+
+            if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+                btnClass = 'yt-btn';
+                icon = '▶️';
+                subtitle = 'YouTube Video / Kanal';
+                if (isGeneric) {
+                    if (cleanUrl.includes('playlist?list=')) {
+                        actionTitle = "YouTube Pleylistni tinglash";
+                        subtitle = "Pleylist • YouTube ↗";
+                    } else if (cleanUrl.includes('/watch') || cleanUrl.includes('youtu.be/')) {
+                        actionTitle = "YouTube'da tomosha qilish";
+                        subtitle = "Video rolik • YouTube ↗";
+                    } else if (cleanUrl.includes('/@') || cleanUrl.includes('/channel/')) {
+                        actionTitle = "YouTube kanaliga o'tish";
+                        subtitle = "Kanal • YouTube ↗";
+                    } else if (cleanUrl.includes('/results')) {
+                        actionTitle = "YouTube'da qidirish";
+                        subtitle = "Qidiruv natijalari • YouTube ↗";
+                    } else {
+                        actionTitle = "YouTube'da ko'rish";
+                        subtitle = "YouTube ↗";
+                    }
+                }
+            } else if (cleanUrl.includes('wikipedia.org')) {
+                btnClass = 'wiki-btn';
+                icon = '📖';
+                subtitle = 'Vikipediya Ensiklopediyasi ↗';
+                if (isGeneric) {
+                    actionTitle = "Vikipediyada to'liq o'qish";
+                }
+            } else if (cleanUrl.includes('google.com/search')) {
+                btnClass = 'web-btn';
+                icon = '🔍';
+                subtitle = 'Google Qidiruv ↗';
+                if (isGeneric) {
+                    actionTitle = "Google'da ko'rish";
+                }
+            } else {
+                if (isGeneric) {
+                    actionTitle = subtitle + " saytini ochish";
+                    subtitle = "Rasmiy veb-sahifa ↗";
+                }
+            }
+
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" onclick="window.open('${cleanUrl}', '_blank'); return true;" class="chat-action-btn ${btnClass}">
+                <span class="btn-left-content">
+                    <span class="btn-media-icon">${icon}</span>
+                    <span class="btn-text-wrap">
+                        <span class="btn-action-title">${actionTitle}</span>
+                        <span class="btn-action-sub">${subtitle}</span>
+                    </span>
+                </span>
+                <span class="btn-arrow-icon">↗</span>
+            </a>`;
+        }
+
+        function formatChatMessage(text) {
+            if (!text) return "";
+
+            // Run-on raqamli ro'yxatlarni to'g'rilash (masalan: "...url 2. Bolalar...")
+            let normalized = text.replace(/([^\n])\s+(\d+)\.\s+/g, '$1\n\n$2. ');
+
+            const rawLines = normalized.split(/\r?\n/);
+            let blocks = [];
+            let currentCard = null;
+            let textAccumulator = [];
+
+            function flushText() {
+                if (textAccumulator.length > 0) {
+                    let combined = textAccumulator.join('<br>').trim();
+                    if (combined) {
+                        blocks.push('<p class="chat-text-para">' + combined + '</p>');
+                    }
+                    textAccumulator = [];
+                }
+            }
+
+            function flushCard() {
+                if (currentCard) {
+                    let actionsHtml = currentCard.buttons.length > 0
+                        ? `<div class="chat-rec-actions">${currentCard.buttons.join('')}</div>`
+                        : '';
+                    let badgeHtml = currentCard.num 
+                        ? `<span class="chat-rec-badge">${currentCard.num}</span>`
+                        : `<span class="chat-rec-badge bullet-badge">✨</span>`;
+                    let descHtml = currentCard.desc 
+                        ? `<div class="chat-rec-desc">${currentCard.desc}</div>`
+                        : '';
+
+                    let cardHtml = `
+                    <div class="chat-rec-card ${currentCard.isStandalone ? 'standalone' : ''}">
+                        <div class="chat-rec-header">
+                            ${badgeHtml}
+                            <div class="chat-rec-title-wrap">
+                                <span class="chat-rec-title">${currentCard.title}</span>
+                                ${descHtml}
+                            </div>
+                        </div>
+                        ${actionsHtml}
+                    </div>`;
+                    blocks.push(cardHtml);
+                    currentCard = null;
+                }
+            }
+
+            const listItemRegex = /^(\d+)[.)]\s+(.*)$/;
+            const bulletItemRegex = /^[-*•]\s+(.*)$/;
+            const mdLinkRegex = /(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)?\[([^\]]*)\]\((https?:\/\/[^\s\)]+)\)/gi;
+            const rawUrlRegex = /(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)?(https?:\/\/[^\s<)\]]+)/gi;
+
+            for (let line of rawLines) {
+                let trimmed = line.trim();
+                if (!trimmed) {
+                    flushCard();
+                    flushText();
+                    continue;
+                }
+
+                let listMatch = trimmed.match(listItemRegex);
+                let bulletMatch = trimmed.match(bulletItemRegex);
+
+                if (listMatch || bulletMatch) {
+                    flushCard();
+                    flushText();
+
+                    let num = listMatch ? listMatch[1] : null;
+                    let rawContent = listMatch ? listMatch[2] : bulletMatch[1];
+                    let buttons = [];
+
+                    rawContent = rawContent.replace(mdLinkRegex, (m, label, url) => {
+                        buttons.push(createActionButton(url, label));
+                        return '';
+                    });
+
+                    rawContent = rawContent.replace(rawUrlRegex, (m, url) => {
+                        buttons.push(createActionButton(url));
+                        return '';
+                    });
+
+                    rawContent = rawContent.replace(/\[(?:Bu yerni bos|havola|link|bosing|shu yerda)\]/gi, '');
+                    rawContent = rawContent.replace(/(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)/gi, '');
+                    rawContent = rawContent.replace(/\s*-\s*\(/g, ' (').replace(/\(\s*\)/g, '').replace(/\s*-\s*$/, '').trim();
+                    rawContent = rawContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                    currentCard = {
+                        num: num,
+                        title: rawContent || 'Tavsiya',
+                        desc: '',
+                        buttons: buttons,
+                        isStandalone: false
+                    };
+                    continue;
+                }
+
+                let lineButtons = [];
+                let cleanLine = trimmed.replace(mdLinkRegex, (m, label, url) => {
+                    lineButtons.push(createActionButton(url, label));
+                    return '';
+                }).replace(rawUrlRegex, (m, url) => {
+                    lineButtons.push(createActionButton(url));
+                    return '';
+                });
+
+                cleanLine = cleanLine.replace(/\[(?:Bu yerni bos|havola|link|bosing|shu yerda)\]/gi, '');
+                cleanLine = cleanLine.replace(/(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)/gi, '');
+                cleanLine = cleanLine.replace(/\s*-\s*\(/g, ' (').replace(/\(\s*\)/g, '').replace(/\s*-\s*$/, '').trim();
+                cleanLine = cleanLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                if (currentCard && lineButtons.length > 0 && !cleanLine) {
+                    currentCard.buttons.push(...lineButtons);
+                    continue;
+                }
+
+                if (currentCard && lineButtons.length > 0 && cleanLine) {
+                    if (!currentCard.buttons.length) {
+                        currentCard.desc = cleanLine;
+                        currentCard.buttons.push(...lineButtons);
+                        continue;
+                    }
+                }
+
+                if (lineButtons.length > 0) {
+                    flushCard();
+                    flushText();
+                    blocks.push(`
+                    <div class="chat-rec-card standalone">
+                        <div class="chat-rec-header">
+                            <span class="chat-rec-badge bullet-badge">🌐</span>
+                            <span class="chat-rec-title">${cleanLine || 'Tavsiya qilingan havola'}</span>
+                        </div>
+                        <div class="chat-rec-actions">${lineButtons.join('')}</div>
+                    </div>`);
+                    continue;
+                }
+
+                if (currentCard) {
+                    if (!currentCard.desc && cleanLine.length < 120 && !cleanLine.includes(':')) {
+                        currentCard.desc = cleanLine;
+                        continue;
+                    }
+                    flushCard();
+                }
+
+                textAccumulator.push(cleanLine);
+            }
+
+            flushCard();
+            flushText();
+
+            return blocks.join('\n');
+        }
+
         // Add message to chat box
         function addMessage(sender, text, audioUrl = null) {
             const row = document.createElement("div");
@@ -8902,12 +9327,15 @@ async def mobile_ai_voice_chat_get(request: Request):
             const avatar = sender === "user" ? "👦" : "🤖";
             let replayHtml = "";
             if (audioUrl) {
-                replayHtml = `<br><button type="button" class="audio-replay-btn" onclick="playAiVoice('${audioUrl}')">🔊 Ovozni qayta eshitish</button>`;
+                replayHtml = `<div style="margin-top:8px;"><button type="button" class="audio-replay-btn" onclick="playAiVoice('${audioUrl}')">🔊 Ovozni qayta eshitish</button></div>`;
             }
+            const bodyContent = sender === "user"
+                ? `<p class="chat-text-para">${escapeHtml(text)}</p>`
+                : formatChatMessage(text);
             row.innerHTML = `
                 <div class="avatar">${avatar}</div>
                 <div class="msg-bubble">
-                    ${escapeHtml(text)}
+                    ${bodyContent}
                     ${replayHtml}
                 </div>
             `;

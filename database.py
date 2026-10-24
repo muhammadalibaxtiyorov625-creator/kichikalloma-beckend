@@ -6,6 +6,12 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "database.sqlite")
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 10000;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+    except Exception:
+        pass
     return conn
 
 def init_db():
@@ -189,6 +195,22 @@ def init_db():
     """)
 
     # 11. Farzand Emotsiyalari va Kayfiyat Kundaligi (Neptune / Emotsiyalar Sayyorasi)
+    # 12. Farzand Navigatsiyasi va Bo'limlar Nazorati (Navigation & Section Logs)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS child_navigation_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            child_id INTEGER NOT NULL,
+            section_key TEXT NOT NULL,
+            section_name TEXT NOT NULL,
+            action_type TEXT DEFAULT 'view',
+            extra_data TEXT DEFAULT '{}',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (child_id) REFERENCES children (id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_child_nav_created ON child_navigation_logs (child_id, created_at)")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS child_emotions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

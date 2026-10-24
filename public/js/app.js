@@ -1970,12 +1970,232 @@ function appendAiBubble(role, text, name, time, audioUrl = null, isTypewriter = 
   if (isTypewriter && role === 'bot') {
     startTypewriter(textEl, text, container);
   } else {
-    // Format bold and linebreaks directly
-    const formattedText = escapeHtml(text)
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
-    if (textEl) textEl.innerHTML = formattedText;
+    if (textEl) textEl.innerHTML = formatChatMessage(text);
   }
+}
+
+function createActionButton(url, titleText = "") {
+  let cleanUrl = url.trim().replace(/[.,!?)]+$/, '');
+  let btnClass = 'web-btn';
+  let icon = '🌐';
+  let actionTitle = titleText ? titleText.trim() : "";
+  let subtitle = 'Havola ustiga bosing';
+
+  try {
+    const parsed = new URL(cleanUrl);
+    subtitle = parsed.hostname.replace(/^www\./, '');
+  } catch(e) {}
+
+  const isGeneric = !actionTitle || 
+    /^(bu yerni bos|bosing|link|havola|shu yerda|bu yerda|ko'rish|batafsil|bu yer|bosish)$/i.test(actionTitle);
+
+  if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+    btnClass = 'yt-btn';
+    icon = '▶️';
+    subtitle = 'YouTube Video / Kanal';
+    if (isGeneric) {
+      if (cleanUrl.includes('playlist?list=')) {
+        actionTitle = "YouTube Pleylistni tinglash";
+        subtitle = "Pleylist • YouTube ↗";
+      } else if (cleanUrl.includes('/watch') || cleanUrl.includes('youtu.be/')) {
+        actionTitle = "YouTube'da tomosha qilish";
+        subtitle = "Video rolik • YouTube ↗";
+      } else if (cleanUrl.includes('/@') || cleanUrl.includes('/channel/')) {
+        actionTitle = "YouTube kanaliga o'tish";
+        subtitle = "Kanal • YouTube ↗";
+      } else if (cleanUrl.includes('/results')) {
+        actionTitle = "YouTube'da qidirish";
+        subtitle = "Qidiruv natijalari • YouTube ↗";
+      } else {
+        actionTitle = "YouTube'da ko'rish";
+        subtitle = "YouTube ↗";
+      }
+    }
+  } else if (cleanUrl.includes('wikipedia.org')) {
+    btnClass = 'wiki-btn';
+    icon = '📖';
+    subtitle = 'Vikipediya Ensiklopediyasi ↗';
+    if (isGeneric) {
+      actionTitle = "Vikipediyada to'liq o'qish";
+    }
+  } else if (cleanUrl.includes('google.com/search')) {
+    btnClass = 'web-btn';
+    icon = '🔍';
+    subtitle = 'Google Qidiruv ↗';
+    if (isGeneric) {
+      actionTitle = "Google'da ko'rish";
+    }
+  } else {
+    if (isGeneric) {
+      actionTitle = subtitle + " saytini ochish";
+      subtitle = "Rasmiy veb-sahifa ↗";
+    }
+  }
+
+  return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" onclick="window.open('${cleanUrl}', '_blank'); return true;" class="chat-action-btn ${btnClass}">
+    <span class="btn-left-content">
+      <span class="btn-media-icon">${icon}</span>
+      <span class="btn-text-wrap">
+        <span class="btn-action-title">${actionTitle}</span>
+        <span class="btn-action-sub">${subtitle}</span>
+      </span>
+    </span>
+    <span class="btn-arrow-icon">↗</span>
+  </a>`;
+}
+
+function formatChatMessage(text) {
+  if (!text) return "";
+
+  let normalized = text.replace(/([^\n])\s+(\d+)\.\s+/g, '$1\n\n$2. ');
+  const rawLines = normalized.split(/\r?\n/);
+  let blocks = [];
+  let currentCard = null;
+  let textAccumulator = [];
+
+  function flushText() {
+    if (textAccumulator.length > 0) {
+      let combined = textAccumulator.join('<br>').trim();
+      if (combined) {
+        blocks.push('<p class="chat-text-para">' + combined + '</p>');
+      }
+      textAccumulator = [];
+    }
+  }
+
+  function flushCard() {
+    if (currentCard) {
+      let actionsHtml = currentCard.buttons.length > 0
+        ? `<div class="chat-rec-actions">${currentCard.buttons.join('')}</div>`
+        : '';
+      let badgeHtml = currentCard.num 
+        ? `<span class="chat-rec-badge">${currentCard.num}</span>`
+        : `<span class="chat-rec-badge bullet-badge">✨</span>`;
+      let descHtml = currentCard.desc 
+        ? `<div class="chat-rec-desc">${currentCard.desc}</div>`
+        : '';
+
+      let cardHtml = `
+      <div class="chat-rec-card ${currentCard.isStandalone ? 'standalone' : ''}">
+        <div class="chat-rec-header">
+          ${badgeHtml}
+          <div class="chat-rec-title-wrap">
+            <span class="chat-rec-title">${currentCard.title}</span>
+            ${descHtml}
+          </div>
+        </div>
+        ${actionsHtml}
+      </div>`;
+      blocks.push(cardHtml);
+      currentCard = null;
+    }
+  }
+
+  const listItemRegex = /^(\d+)[.)]\s+(.*)$/;
+  const bulletItemRegex = /^[-*•]\s+(.*)$/;
+  const mdLinkRegex = /(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)?\[([^\]]*)\]\((https?:\/\/[^\s\)]+)\)/gi;
+  const rawUrlRegex = /(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)?(https?:\/\/[^\s<)\]]+)/gi;
+
+  for (let line of rawLines) {
+    let trimmed = line.trim();
+    if (!trimmed) {
+      flushCard();
+      flushText();
+      continue;
+    }
+
+    let listMatch = trimmed.match(listItemRegex);
+    let bulletMatch = trimmed.match(bulletItemRegex);
+
+    if (listMatch || bulletMatch) {
+      flushCard();
+      flushText();
+
+      let num = listMatch ? listMatch[1] : null;
+      let rawContent = listMatch ? listMatch[2] : bulletMatch[1];
+      let buttons = [];
+
+      rawContent = rawContent.replace(mdLinkRegex, (m, label, url) => {
+        buttons.push(createActionButton(url, label));
+        return '';
+      });
+
+      rawContent = rawContent.replace(rawUrlRegex, (m, url) => {
+        buttons.push(createActionButton(url));
+        return '';
+      });
+
+      rawContent = rawContent.replace(/\[(?:Bu yerni bos|havola|link|bosing|shu yerda)\]/gi, '');
+      rawContent = rawContent.replace(/(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)/gi, '');
+      rawContent = rawContent.replace(/\s*-\s*\(/g, ' (').replace(/\(\s*\)/g, '').replace(/\s*-\s*$/, '').trim();
+      rawContent = rawContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      currentCard = {
+        num: num,
+        title: rawContent || 'Tavsiya',
+        desc: '',
+        buttons: buttons,
+        isStandalone: false
+      };
+      continue;
+    }
+
+    let lineButtons = [];
+    let cleanLine = trimmed.replace(mdLinkRegex, (m, label, url) => {
+      lineButtons.push(createActionButton(url, label));
+      return '';
+    }).replace(rawUrlRegex, (m, url) => {
+      lineButtons.push(createActionButton(url));
+      return '';
+    });
+
+    cleanLine = cleanLine.replace(/\[(?:Bu yerni bos|havola|link|bosing|shu yerda)\]/gi, '');
+    cleanLine = cleanLine.replace(/(?:📺\s*)?(?:🔗\s*)?(?:Havola:\s*)/gi, '');
+    cleanLine = cleanLine.replace(/\s*-\s*\(/g, ' (').replace(/\(\s*\)/g, '').replace(/\s*-\s*$/, '').trim();
+    cleanLine = cleanLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    if (currentCard && lineButtons.length > 0 && !cleanLine) {
+      currentCard.buttons.push(...lineButtons);
+      continue;
+    }
+
+    if (currentCard && lineButtons.length > 0 && cleanLine) {
+      if (!currentCard.buttons.length) {
+        currentCard.desc = cleanLine;
+        currentCard.buttons.push(...lineButtons);
+        continue;
+      }
+    }
+
+    if (lineButtons.length > 0) {
+      flushCard();
+      flushText();
+      blocks.push(`
+      <div class="chat-rec-card standalone">
+        <div class="chat-rec-header">
+          <span class="chat-rec-badge bullet-badge">🌐</span>
+          <span class="chat-rec-title">${cleanLine || 'Tavsiya qilingan havola'}</span>
+        </div>
+        <div class="chat-rec-actions">${lineButtons.join('')}</div>
+      </div>`);
+      continue;
+    }
+
+    if (currentCard) {
+      if (!currentCard.desc && cleanLine.length < 120 && !cleanLine.includes(':')) {
+        currentCard.desc = cleanLine;
+        continue;
+      }
+      flushCard();
+    }
+
+    textAccumulator.push(cleanLine);
+  }
+
+  flushCard();
+  flushText();
+
+  return blocks.join('\n');
 }
 
 function startTypewriter(element, fullText, container) {
@@ -1997,10 +2217,7 @@ function startTypewriter(element, fullText, container) {
       if (container) container.scrollTop = container.scrollHeight;
     } else {
       clearInterval(interval);
-      const finalFormatted = escapeHtml(fullText)
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
-      element.innerHTML = finalFormatted;
+      element.innerHTML = formatChatMessage(fullText);
       if (container) container.scrollTop = container.scrollHeight;
     }
   }, 45); // Har 45ms da 1 ta so'z dona-dona chiqadi (Gemini AI kabi)

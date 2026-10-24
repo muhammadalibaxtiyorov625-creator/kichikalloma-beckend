@@ -2830,3 +2830,201 @@ body {
   color: #fff;
 }
 
+
+
+/* ==============================================================================
+   ALLOMA AI TAVSIYA VA QIDIRUV KARTOCHKALARI (TARTIBLANGAN & BOSILADIGAN TUGMALAR)
+   ============================================================================== */
+.chat-text-para {
+  margin: 0 0 10px 0;
+  line-height: 1.55;
+  font-size: 14.5px;
+  color: inherit;
+}
+.chat-text-para:last-child {
+  margin-bottom: 0;
+}
+
+.chat-rec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(250, 204, 21, 0.25);
+  border-radius: 16px;
+  padding: 13px 15px;
+  margin: 10px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.chat-rec-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(250, 204, 21, 0.55);
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.18);
+}
+.chat-rec-card.standalone {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.chat-rec-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.chat-rec-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+  color: #000000;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgba(250, 204, 21, 0.35);
+  margin-top: 1px;
+}
+.chat-rec-badge.bullet-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 13px;
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.35);
+}
+.chat-rec-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.chat-rec-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+.chat-rec-desc {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+.chat-rec-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Katta Bosiladigan Tugmalar (USTIGA BOSMA) */
+.chat-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 15px;
+  border-radius: 12px;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  user-select: none;
+  border: 1.5px solid transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+.chat-action-btn:hover {
+  transform: translateY(-2px) scale(1.01);
+  text-decoration: none !important;
+}
+.chat-action-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.chat-action-btn.yt-btn {
+  background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(255, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.chat-action-btn.yt-btn:hover {
+  box-shadow: 0 6px 22px rgba(255, 0, 0, 0.55);
+  filter: brightness(1.08);
+}
+
+.chat-action-btn.wiki-btn {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(30, 41, 59, 0.35);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.chat-action-btn.wiki-btn:hover {
+  box-shadow: 0 6px 22px rgba(30, 41, 59, 0.5);
+  filter: brightness(1.1);
+}
+
+.chat-action-btn.web-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff !important;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.35);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.chat-action-btn.web-btn:hover {
+  box-shadow: 0 6px 22px rgba(79, 70, 229, 0.55);
+  filter: brightness(1.08);
+}
+
+.btn-left-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.btn-media-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.btn-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+}
+.btn-action-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-action-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-arrow-icon {
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  opacity: 0.95;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+.chat-action-btn:hover .btn-arrow-icon {
+  transform: translate(2px, -2px);
+  background: rgba(255, 255, 255, 0.3);
+}
